@@ -1,9 +1,9 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using System;
 using System.Collections.Generic;
-using System.Diagnostics.CodeAnalysis;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using System.Diagnostics.CodeAnalysis;
 
 namespace Support
 {
@@ -17,16 +17,22 @@ namespace Support
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             modelBuilder.Entity<Employee>()
-                .HasOne(p => p.ManagerObj)
+                .HasOne(p => p.Manager)
                 .WithMany(b => b.Operators)
-                .HasForeignKey(p => p.Manager)
+                .HasForeignKey(p => p.ManagerId)
                 .HasConstraintName("FK_employee_employee_manager");
 
             modelBuilder.Entity<Employee>()
-                .HasOne(p => p.DirectorObj)
+                .HasOne(p => p.Director)
                 .WithMany(b => b.Managers)
-                .HasForeignKey(p => p.Director)
+                .HasForeignKey(p => p.DirectorId)
                 .HasConstraintName("FK_employee_employee_director");
+
+            modelBuilder.Entity<Message>()
+                .HasOne(p => p.Operator)
+                .WithMany(b => b.Messages)
+                .HasForeignKey(p => p.OperatorId)
+                .HasConstraintName("FK_message_employee");
         }
 
         public virtual DbSet<Employee> Employees { get; set; }
@@ -49,20 +55,20 @@ namespace Support
         public string Login { get; set; }
 
         [Column("manager")]
-        public string Manager { get; set; }
+        public string ManagerId { get; set; }
 
         [Column("director")]
-        public string Director { get; set; }
+        public string DirectorId { get; set; }
 
         [SuppressMessage("Microsoft.Usage", "CA2227:CollectionPropertiesShouldBeReadOnly")]
         public virtual ICollection<Employee> Operators { get; set; }
 
-        public virtual Employee ManagerObj { get; set; }
+        public virtual Employee Manager { get; set; }
 
         [SuppressMessage("Microsoft.Usage", "CA2227:CollectionPropertiesShouldBeReadOnly")]
         public virtual ICollection<Employee> Managers { get; set; }
 
-        public virtual Employee DirectorObj { get; set; }
+        public virtual Employee Director { get; set; }
 
         [SuppressMessage("Microsoft.Usage", "CA2227:CollectionPropertiesShouldBeReadOnly")]
         public virtual ICollection<Message> Messages { get; set; }
@@ -85,7 +91,7 @@ namespace Support
         public DateTime Created { get; set; }
 
         [Column("operator")]
-        public string Operator { get; set; }
+        public string OperatorId { get; set; }
 
         [Column("finished")]
         public DateTime? Finished { get; set; }
@@ -93,6 +99,6 @@ namespace Support
         [Column("cancelled")]
         public bool Cancelled { get; set; }
 
-        public virtual Employee Employee { get; set; }
+        public virtual Employee Operator { get; set; }
     }
 }

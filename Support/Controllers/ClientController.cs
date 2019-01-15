@@ -17,13 +17,6 @@ namespace Support.Controllers
             _context = context;
         }
 
-        // GET: api/Messages
-        [HttpGet]
-        public IEnumerable<Message> GetMessages()
-        {
-            return _context.Messages;
-        }
-
         // GET: api/Messages/5
         [HttpGet("{id}")]
         public async Task<IActionResult> GetMessage([FromRoute] int id)

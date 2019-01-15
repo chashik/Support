@@ -1,9 +1,7 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-using Microsoft.Extensions.Configuration;
 
 namespace Support.Controllers
 {
@@ -13,34 +11,15 @@ namespace Support.Controllers
     {
         private readonly SupportContext _context;
 
-        private readonly int _tm;
-        private readonly int _td;
-        private readonly int _tmin;
-        private readonly int _tmax;
-
-        public OperatorController(SupportContext context, IConfiguration configuration)
+        public OperatorController(SupportContext context)
         {
             _context = context;
-
-            _tm = configuration.GetValue<int>("Tm");
-            _td = configuration.GetValue<int>("Td");
-            _tmin = configuration.GetValue<int>("Tmin");
-            _tmax = configuration.GetValue<int>("Tmax");
-        }
-
-        // GET: api/Messages
-        [HttpGet]
-        public IEnumerable<Message> GetMessages()
-        {
-            return _context.Messages;
         }
 
         // GET: api/Operator/operator1
-        [HttpGet("{id}")]
-        public async Task<IActionResult> GetMessage([FromRoute] string login)
+        [HttpGet("{offset?}")]
+        public async Task<IActionResult> GetMessage([FromRoute] int offset)
         {
-            IEnumerable<int> message = new int[] { _tm, _td, _tmin, _tmax };
-
             /*if (!ModelState.IsValid)
             {
                 return BadRequest(ModelState);
@@ -53,10 +32,10 @@ namespace Support.Controllers
                 return NotFound();
             }
             */
-            return Ok(message);
+            return Ok();
         }
 
-        // PUT: api/Messages/5
+        // PUT: api/Operator/5
         [HttpPut("{id}")]
         public async Task<IActionResult> PutMessage([FromRoute] int id, [FromBody] Message message)
         {
@@ -91,45 +70,6 @@ namespace Support.Controllers
             return NoContent();
         }
 
-        // POST: api/Messages
-        [HttpPost]
-        public async Task<IActionResult> PostMessage([FromBody] Message message)
-        {
-            if (!ModelState.IsValid)
-            {
-                return BadRequest(ModelState);
-            }
-
-            _context.Messages.Add(message);
-            await _context.SaveChangesAsync();
-
-            return CreatedAtAction("GetMessage", new { id = message.Id }, message);
-        }
-
-        // DELETE: api/Messages/5
-        [HttpDelete("{id}")]
-        public async Task<IActionResult> DeleteMessage([FromRoute] int id)
-        {
-            if (!ModelState.IsValid)
-            {
-                return BadRequest(ModelState);
-            }
-
-            var message = await _context.Messages.FindAsync(id);
-            if (message == null)
-            {
-                return NotFound();
-            }
-
-            _context.Messages.Remove(message);
-            await _context.SaveChangesAsync();
-
-            return Ok(message);
-        }
-
-        private bool MessageExists(int id)
-        {
-            return _context.Messages.Any(e => e.Id == id);
-        }
+        private bool MessageExists(int id) => _context.Messages.Any(e => e.Id == id);
     }
 }

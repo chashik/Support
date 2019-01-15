@@ -6,7 +6,7 @@
 - List messages;
 - List employees;
 ####
-#### Inner highlights: 
+#### Highlights: 
 - 3 types of employees: operator - processes all messages, manager - processes messages of age > (Tm), director - processes messages of age > (Td);
 - message queue as database table;
-- console app with client and employee emulators.
+- test console app with client and employee emulators.

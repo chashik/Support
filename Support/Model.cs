@@ -99,6 +99,9 @@ namespace Support
         [Column("cancelled")]
         public bool Cancelled { get; set; }
 
+        [Column("answer")]
+        public string Answer { get; set; }
+
         public virtual Employee Operator { get; set; }
     }
 }

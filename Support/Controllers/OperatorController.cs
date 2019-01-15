@@ -1,5 +1,6 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using System;
 using System.Linq;
 using System.Threading.Tasks;
 
@@ -16,23 +17,25 @@ namespace Support.Controllers
             _context = context;
         }
 
-        // GET: api/Operator/operator1
+        // GET: api/Operator/1
         [HttpGet("{offset?}")]
         public async Task<IActionResult> GetMessage([FromRoute] int offset)
         {
-            /*if (!ModelState.IsValid)
-            {
-                return BadRequest(ModelState);
-            }
+            var created = DateTime.Now.AddSeconds(-offset);
 
-            var message = await _context.Messages.FindAsync(id);
-
-            if (message == null)
+            try
             {
-                return NotFound();
+                var message = await _context.Messages
+                  .Where(p => p.Created < created)
+                  .OrderBy(p => p.Id)
+                  .FirstAsync();
+
+                return Ok(message);
             }
-            */
-            return Ok();
+            catch (Exception ex)
+            {
+                return NotFound(ex.Message);
+            }
         }
 
         // PUT: api/Operator/5

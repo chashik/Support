@@ -1,5 +1,5 @@
 ### Technical support web-api example
-#### .Net Core 2.1
+#### .Net Core 2.1, REST
 #### Features:
 - Create message;
 - Update message;

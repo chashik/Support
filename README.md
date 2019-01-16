@@ -9,4 +9,5 @@
 #### Highlights: 
 - 3 types of employees: operator - processes all messages, manager - processes messages of age > (Tm), director - processes messages of age > (Td);
 - message queue as database table;
+- DBContext DI;
 - test console app with client and employee emulators.

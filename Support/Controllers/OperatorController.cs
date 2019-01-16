@@ -17,18 +17,26 @@ namespace Support.Controllers
             _context = context;
         }
 
-        // GET: api/Operator/1
-        [HttpGet("{offset?}")]
-        public async Task<IActionResult> GetMessage([FromRoute] int offset)
+        // GET: api/Operator/2?login=operator1
+        [HttpGet("{offset:int}")]
+        public async Task<IActionResult> GetMessage(
+            [FromQuery] string login, 
+            [FromRoute] int offset)
         {
             var created = DateTime.Now.AddSeconds(-offset);
 
             try
             {
                 var message = await _context.Messages
-                  .Where(p => p.Created < created)
+                  .Where(p => p.Created < created && !p.Cancelled && p.OperatorId == null)
                   .OrderBy(p => p.Id)
                   .FirstAsync();
+
+                message.OperatorId = login;
+
+                _context.Entry(message).State = EntityState.Modified;
+
+                await _context.SaveChangesAsync();
 
                 return Ok(message);
             }

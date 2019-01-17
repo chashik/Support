@@ -4,7 +4,6 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net.Http;
-using System.Net.Http.Headers;
 using System.Threading.Tasks;
 
 namespace Test
@@ -14,12 +13,21 @@ namespace Test
         private readonly string _apiHost;
         private readonly int _clients;
 
+        private string[] _operators;
+        private string[] _managers;
+        private string[] _directors;
+
+        private MyConfig _myConfig;
+
+        private int _waiting;
+        private string _oldest;
+
         public Information(IConfigurationRoot conf)
         {
             _apiHost = conf.GetValue<string>("ApiHost");
             _clients = conf.GetValue<int>("Clients");
 
-            Task.WaitAll(Employees());
+            Task.WaitAll(Employees(), ApiConf(), Messages());
         }
 
         public void Output()
@@ -29,6 +37,12 @@ namespace Test
             Console.WriteLine($"* Operators ({_operators.Length}): " + string.Join(", ", _operators));
             Console.WriteLine($"* Managers ({_managers.Length}): " + string.Join(", ", _managers));
             Console.WriteLine($"* Directors ({_directors.Length}): " + string.Join(", ", _directors));
+            Console.WriteLine("* Minimal message age for managers, sec (Tm): " + _myConfig.Tm);
+            Console.WriteLine("* Minimal message age for directors, sec (Tm): " + _myConfig.Td);
+            Console.WriteLine("* Minimal time per message for employee, sec (Tmin): " + _myConfig.Tmin);
+            Console.WriteLine("* Maximal time per message for employee, sec (Tmax): " + _myConfig.Tmax);
+            Console.WriteLine("* Awaiting messages in queue: " + _waiting);
+            if (_oldest != null) Console.WriteLine("* Oldest message from: " + _oldest);
         }
 
         private async Task Employees()
@@ -48,26 +62,19 @@ namespace Test
 
         private async Task ApiConf()
         {
-            using (var httpClient = new HttpClient())
-            {
-                httpClient.BaseAddress = new Uri(_apiHost);
-                httpClient.DefaultRequestHeaders.Accept.Clear();
-                httpClient.DefaultRequestHeaders.Accept.Add(
-                    new MediaTypeWithQualityHeaderValue("application/json"));
-
-                var response = await httpClient.GetAsync("api/employees");
-            }
+            using (var response = await HttpHelp.Get(_apiHost, "api/config"))
+                _myConfig = await response.Content.ReadAsAsync<MyConfig>();
         }
 
-        private string[] _operators;
-        private string[] _managers;
-        private string[] _directors;
-
-        private int _tm;
-        private int _td;
-        private int _tmin;
-        private int _tmax;
-
-        private int _waiting;
+        private async Task Messages()
+        {
+            using (var response = await HttpHelp.Get(_apiHost, "api/operator"))
+            {
+                var messages = await response.Content.ReadAsAsync<IEnumerable<Message>>();
+                _waiting = messages.Count();
+                if (_waiting > 0)
+                    _oldest = messages.OrderBy(p => p.Created).First().Created.ToString("YYYY/MM/DD hh:mm:ss");
+            }
+        }
     }
 }

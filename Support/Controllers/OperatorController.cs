@@ -1,6 +1,7 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 
@@ -16,6 +17,10 @@ namespace Support.Controllers
         {
             _context = context;
         }
+
+        // GET: api/Operator
+        [HttpGet]
+        public IEnumerable<Message> GetMessages() => _context.Messages.Where(p => !p.Cancelled && p.OperatorId == null);
 
         // GET: api/Operator/2?login=operator1
         [HttpGet("{offset:int}")]

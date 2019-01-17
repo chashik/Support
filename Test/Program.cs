@@ -16,29 +16,24 @@ namespace Test
                 switch (args[0].Trim('-').ToLower())
                 {
                     case "emulate":
+                        Emulate(conf);
                         break;
                     case "info":
+                        Inform(conf);
                         break;
                     case "clear":
+                        Clear(conf);
                         break;
                     default:
                         ArgumentsError();
-                        return;
+                        break;
                 }
-            else ArgumentsError();
+            else
+                ArgumentsError();
 
             Fin:
             Console.WriteLine("Press Enter to exit..");
             Console.ReadLine();
-        }
-
-        private static void ArgumentsError()
-        {
-            Console.WriteLine("Check arguments!");
-            Console.WriteLine("Valid options are: emulate, info, clear.");
-            Console.WriteLine("  Emulate - perform emulation;");
-            Console.WriteLine("  Info - show emulation parameters, employees and messages queue statistics;");
-            Console.WriteLine("  Clear - clear messages queue.");
         }
 
         private static IConfigurationRoot Configuration()
@@ -56,6 +51,31 @@ namespace Test
                 Console.WriteLine(ex.Message);
                 return null;
             }
+        }
+
+        private static void Emulate(IConfigurationRoot conf)
+        {
+            var emu = new Emulation(conf);
+        }
+
+        private static void Inform(IConfigurationRoot conf)
+        {
+            var info = new Information(conf);
+            info.Output();
+        }
+
+        private static void Clear(IConfigurationRoot conf)
+        {
+            var cleaner = new Cleaner(conf);
+        }
+
+        private static void ArgumentsError()
+        {
+            Console.WriteLine("Check arguments!");
+            Console.WriteLine("Valid options are: emulate, info, clear.");
+            Console.WriteLine("  Emulate - perform emulation;");
+            Console.WriteLine("  Info - show emulation parameters, employees and messages queue statistics;");
+            Console.WriteLine("  Clear - clear messages queue.");
         }
     }
 }

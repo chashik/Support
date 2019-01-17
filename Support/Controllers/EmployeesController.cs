@@ -21,7 +21,8 @@ namespace Support.Controllers
         [HttpGet]
         public IEnumerable<Employee> GetEmployees()
         {
-            return _context.Employees;
+            return _context.Employees
+                .Select(p => new Employee() { Login = p.Login, DirectorId = p.DirectorId, ManagerId = p.ManagerId });
         }
 
         // GET: api/Employees/5

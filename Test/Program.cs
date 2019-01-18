@@ -32,8 +32,10 @@ namespace Test
                 ArgumentsError();
 
             Fin:
+
             Console.WriteLine("Press Enter to exit..");
             Console.ReadLine();
+
         }
 
         private static IConfigurationRoot Configuration()

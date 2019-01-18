@@ -8,25 +8,17 @@ using System.Threading.Tasks;
 
 namespace Test
 {
-    internal class Information
+    internal class Information : ApiClient
     {
-        private readonly string _apiHost;
-        private readonly int _clients;
-
         private string[] _operators;
         private string[] _managers;
         private string[] _directors;
 
-        private MyConfig _myConfig;
-
         private int _waiting;
         private string _oldest;
 
-        public Information(IConfigurationRoot conf)
+        public Information(IConfigurationRoot conf) : base(conf)
         {
-            _apiHost = conf.GetValue<string>("ApiHost");
-            _clients = conf.GetValue<int>("Clients");
-
             Task.WaitAll(Employees(), ApiConf(), Messages());
         }
 
@@ -38,7 +30,7 @@ namespace Test
             Console.WriteLine($"* Managers ({_managers.Length}): " + string.Join(", ", _managers));
             Console.WriteLine($"* Directors ({_directors.Length}): " + string.Join(", ", _directors));
             Console.WriteLine("* Minimal message age for managers, sec (Tm): " + _myConfig.Tm);
-            Console.WriteLine("* Minimal message age for directors, sec (Tm): " + _myConfig.Td);
+            Console.WriteLine("* Minimal message age for directors, sec (Td): " + _myConfig.Td);
             Console.WriteLine("* Minimal time per message for employee, sec (Tmin): " + _myConfig.Tmin);
             Console.WriteLine("* Maximal time per message for employee, sec (Tmax): " + _myConfig.Tmax);
             Console.WriteLine("* Awaiting messages in queue: " + _waiting);
@@ -47,7 +39,7 @@ namespace Test
 
         private async Task Employees()
         {
-            using (var response = await HttpHelp.Get(_apiHost, "api/employees"))
+            using (var response = await Get("api/employees"))
             {
                 var employees = await response.Content.ReadAsAsync<IEnumerable<Employee>>();
 
@@ -60,15 +52,9 @@ namespace Test
             }
         }
 
-        private async Task ApiConf()
-        {
-            using (var response = await HttpHelp.Get(_apiHost, "api/config"))
-                _myConfig = await response.Content.ReadAsAsync<MyConfig>();
-        }
-
         private async Task Messages()
         {
-            using (var response = await HttpHelp.Get(_apiHost, "api/operator"))
+            using (var response = await Get("api/operator"))
             {
                 var messages = await response.Content.ReadAsAsync<IEnumerable<Message>>();
                 _waiting = messages.Count();

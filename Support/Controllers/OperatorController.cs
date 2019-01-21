@@ -20,7 +20,9 @@ namespace Support.Controllers
 
         // GET: api/Operator
         [HttpGet]
-        public IEnumerable<Message> GetMessages() => _context.Messages.Where(p => !p.Cancelled && p.OperatorId == null);
+        public IEnumerable<Message> GetMessages() => _context.Messages
+            .Where(p => !p.Cancelled && p.OperatorId == null)
+            .OrderBy(p => p.Created);
 
         // GET: api/Operator/2?login=operator1
         [HttpGet("{offset:int}")]

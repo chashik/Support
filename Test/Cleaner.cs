@@ -4,11 +4,11 @@ namespace Test
 {
     internal class Cleaner
     {
-        private IConfigurationRoot conf;
+        private readonly string _apiHost;
 
-        public Cleaner(IConfigurationRoot conf)
+        public Cleaner(string apiHost)
         {
-            this.conf = conf;
+            _apiHost = apiHost;
         }
     }
 }

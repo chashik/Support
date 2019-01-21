@@ -8,34 +8,17 @@ namespace Test
     {
         static void Main(string[] args)
         {
-            var conf = Configuration();
-
-            if (conf == null) goto Fin;
-
             if (args.Length > 0)
-                switch (args[0].Trim('-').ToLower())
-                {
-                    case "emulate":
-                        Emulate(conf);
-                        break;
-                    case "info":
-                        Inform(conf);
-                        break;
-                    case "clear":
-                        Clear(conf);
-                        break;
-                    default:
-                        ArgumentsError();
-                        break;
-                }
+            {
+                var conf = Configuration();
+                if (conf != null)
+                    Start(conf, args[0].Trim('-').ToLower());
+            }
             else
                 ArgumentsError();
 
-            Fin:
-
             Console.WriteLine("Press Enter to exit..");
             Console.ReadLine();
-
         }
 
         private static IConfigurationRoot Configuration()
@@ -55,20 +38,41 @@ namespace Test
             }
         }
 
-        private static void Emulate(IConfigurationRoot conf)
+        private static void Start(IConfigurationRoot conf, string arg)
         {
-            var emu = new Emulation(conf);
+            var apiHost = conf.GetValue<string>("ApiHost");
+            var users = conf.GetValue<int>("Users");
+            switch (arg)
+            {
+                case "emulate":
+                    Emulate(apiHost, users);
+                    break;
+                case "info":
+                    Inform(apiHost, users);
+                    break;
+                case "clear":
+                    Clear(apiHost);
+                    break;
+                default:
+                    ArgumentsError();
+                    break;
+            }
         }
 
-        private static void Inform(IConfigurationRoot conf)
+        private static void Emulate(string apiHost, int users)
         {
-            var info = new Information(conf);
-            info.Output();
+            var emu = new Emulation(apiHost, users);
         }
 
-        private static void Clear(IConfigurationRoot conf)
+        private static void Inform(string apiHost, int users)
         {
-            var cleaner = new Cleaner(conf);
+            var info = new Emulation(apiHost, users);
+            info.Information();
+        }
+
+        private static void Clear(string apiHost)
+        {
+            var cleaner = new Cleaner(apiHost);
         }
 
         private static void ArgumentsError()

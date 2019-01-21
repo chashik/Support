@@ -1,17 +1,17 @@
-﻿using System;
+﻿using System.Threading;
+using System.Threading.Tasks;
+using System;
 using System.Collections.Generic;
 using System.Text;
 using Support;
 
 namespace Test
 {
-    internal class Operator : Emulator
+    internal class Operator : ApiClient
     {
-        public Operator(string login) : base(login)
+        public Operator(string login, CancellationToken token) : base(login)
         {
-
+            
         }
-
-        
     }
 }

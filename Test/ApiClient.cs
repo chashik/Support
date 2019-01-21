@@ -1,9 +1,8 @@
-﻿using Microsoft.Extensions.Configuration;
+﻿using Support;
 using System;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Threading.Tasks;
-using Support;
 
 namespace Test
 {
@@ -11,20 +10,10 @@ namespace Test
     {
 
         protected readonly string _apiHost;
-        protected readonly int _clients;
 
-        protected MyConfig _myConfig;
-
-        public ApiClient(IConfigurationRoot conf)
+        public ApiClient(string apiHost)
         {
-            _apiHost = conf.GetValue<string>("ApiHost");
-            _clients = conf.GetValue<int>("Clients");
-        }
-
-        protected async Task ApiConf()
-        {
-            using (var response = await Get("api/config"))
-                _myConfig = await response.Content.ReadAsAsync<MyConfig>();
+            _apiHost = apiHost;
         }
 
         protected async Task<HttpResponseMessage> Get(string requestUri)

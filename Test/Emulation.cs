@@ -1,7 +1,7 @@
 ﻿using Support;
 using System;
-using System.Collections.Generic;
 using System.Collections.Concurrent;
+using System.Collections.Generic;
 using System.Linq;
 using System.Net.Http;
 using System.Threading;
@@ -39,43 +39,26 @@ namespace Test
             }*/
         }
 
-        private void DoSomework()
+        public string[] Information
         {
-            Thread.Sleep(5000);
-        }
-
-        private void Console_CancelKeyPress(object sender, ConsoleCancelEventArgs e)
-        {
-            _tokenSource.Cancel();
-
-            Console.WriteLine("Finishing emulation, please wait..");
-            
-            for (var i = 0; i < 6; i++)
+            get
             {
-                Console.SetCursorPosition(0, Console.CursorTop);
-                Console.Write(i);
-                Thread.Sleep(1000);
+                return new string[]
+                {
+                    "* Using ApiHost: " + _apiHost,
+                    "* User emulators count: " + _users.ToString(),
+
+                    $"* Operators ({_operators.Count()}): " + string.Join(", ", _operators),
+                    $"* Managers ({_managers.Count()}): " + string.Join(", ", _managers),
+                    $"* Directors ({_directors.Count()}): " + string.Join(", ", _directors),
+
+                    "* Minimal message age for managers, sec (Tm): " + _myConfig.Tm,
+                    "* Minimal message age for directors, sec (Td): " + _myConfig.Td,
+                    "* Minimal time per message for employee, sec (Tmin): " + _myConfig.Tmin,
+                    "* Maximal time per message for employee, sec (Tmax): " + _myConfig.Tmax,
+                    "* Awaiting messages in queue: " + _messages.Count
+                };
             }
-
-            Thread.CurrentThread.Join();
-        }
-
-        public void Information()
-        {
-            Console.WriteLine("* Using ApiHost: " + _apiHost);
-            Console.WriteLine("* User emulators count: " + _users.ToString());
-            Console.WriteLine($"* Operators ({_operators.Count()}): " + string.Join(", ", _operators));
-            Console.WriteLine($"* Managers ({_managers.Count()}): " + string.Join(", ", _managers));
-            Console.WriteLine($"* Directors ({_directors.Count()}): " + string.Join(", ", _directors));
-            Console.WriteLine("* Minimal message age for managers, sec (Tm): " + _myConfig.Tm);
-            Console.WriteLine("* Minimal message age for directors, sec (Td): " + _myConfig.Td);
-            Console.WriteLine("* Minimal time per message for employee, sec (Tmin): " + _myConfig.Tmin);
-            Console.WriteLine("* Maximal time per message for employee, sec (Tmax): " + _myConfig.Tmax);
-
-            var waiting = _messages.Count;
-            Console.WriteLine("* Awaiting messages in queue: " + waiting);
-            if (waiting > 0)
-                Console.WriteLine("* Oldest message from: " + _messages.First().Created.ToString("YYYY/MM/DD hh:mm:ss"));
         }
 
         private async Task Employees()
@@ -103,6 +86,27 @@ namespace Test
         {
             using (var response = await Get("api/config"))
                 _myConfig = await response.Content.ReadAsAsync<MyConfig>();
+        }
+
+        private void DoSomework()
+        {
+            Thread.Sleep(5000);
+        }
+
+        private void Console_CancelKeyPress(object sender, ConsoleCancelEventArgs e)
+        {
+            _tokenSource.Cancel();
+
+            Console.WriteLine("Finishing emulation, please wait..");
+
+            for (var i = 0; i < 6; i++)
+            {
+                Console.SetCursorPosition(0, Console.CursorTop);
+                Console.Write(i);
+                Thread.Sleep(1000);
+            }
+
+            Thread.CurrentThread.Join();
         }
     }
 }

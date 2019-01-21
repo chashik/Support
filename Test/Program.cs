@@ -66,8 +66,9 @@ namespace Test
 
         private static void Inform(string apiHost, int users)
         {
-            var info = new Emulation(apiHost, users);
-            info.Information();
+            var emu = new Emulation(apiHost, users);
+            var info = emu.Information;
+            foreach (var str in info) Console.WriteLine(str);
         }
 
         private static void Clear(string apiHost)

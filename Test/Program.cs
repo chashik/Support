@@ -61,13 +61,13 @@ namespace Test
 
         private static void Emulate(string apiHost, int users)
         {
-            var emu = new Emulation(apiHost, users);
+            var emu = new Simulation(apiHost, users);
         }
 
         private static void Inform(string apiHost, int users)
         {
-            var emu = new Emulation(apiHost, users);
-            var info = emu.Information;
+            var emu = new Simulation(apiHost, users);
+            var info = emu.About;
             foreach (var str in info) Console.WriteLine(str);
         }
 

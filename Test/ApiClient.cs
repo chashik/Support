@@ -1,5 +1,4 @@
-﻿using Support;
-using System;
+﻿using System;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Threading.Tasks;
@@ -18,10 +17,19 @@ namespace Test
 
         protected async Task<HttpResponseMessage> Get(string requestUri)
         {
-            return await Get(_apiHost, requestUri);
+            using (var httpClient = new HttpClient())
+            {
+                httpClient.BaseAddress = new Uri(_apiHost);
+                httpClient.DefaultRequestHeaders.Accept.Clear();
+                httpClient.DefaultRequestHeaders.Accept.Add(
+                    new MediaTypeWithQualityHeaderValue("application/json"));
+
+                return await httpClient.GetAsync(requestUri);
+            }
+            //return await Get(_apiHost, requestUri);
         }
 
-        public static async Task<HttpResponseMessage> Get(string baseUri, string requestUri)
+        /*protected static async Task<HttpResponseMessage> Get(string baseUri, string requestUri)
         {
             using (var httpClient = new HttpClient())
             {
@@ -32,6 +40,8 @@ namespace Test
 
                 return await httpClient.GetAsync(requestUri);
             }
-        }
+        }*/
     }
+
+
 }

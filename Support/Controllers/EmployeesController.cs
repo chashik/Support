@@ -19,10 +19,10 @@ namespace Support.Controllers
 
         // GET: api/Employees
         [HttpGet]
-        public IEnumerable<Employee> GetEmployees()
+        public async Task<IActionResult> GetEmployees()
         {
-            return _context.Employees
-                .Select(p => new Employee() { Login = p.Login, DirectorId = p.DirectorId, ManagerId = p.ManagerId });
+            return await Task.Run<IActionResult>(() => Ok(_context.Employees
+                .Select(p => new Employee() { Login = p.Login, DirectorId = p.DirectorId, ManagerId = p.ManagerId })));
         }
 
         // GET: api/Employees/5

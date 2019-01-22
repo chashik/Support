@@ -9,7 +9,7 @@ using System.Threading.Tasks;
 
 namespace Test
 {
-    internal class Emulation : ApiClient
+    internal class Simulation : ApiClient
     {
         private readonly int _users;
 
@@ -23,7 +23,7 @@ namespace Test
 
         private ConcurrentQueue<Message> _messages;
 
-        public Emulation(string apiHost, int users) : base(apiHost)
+        public Simulation(string apiHost, int users) : base(apiHost)
         {
             _users = users;
 
@@ -39,7 +39,7 @@ namespace Test
             }*/
         }
 
-        public string[] Information
+        public string[] About
         {
             get
             {

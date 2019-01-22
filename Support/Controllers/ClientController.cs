@@ -16,26 +16,19 @@ namespace Support.Controllers
             _context = context;
         }
 
-        // GET: api/Messages/5
-        [HttpGet("{id}")]
-        public async Task<IActionResult> GetMessage([FromRoute] int id)
+        // GET: api/Client/client1
+        [HttpGet("{login}/{id?}")]
+        public async Task<IActionResult> GetMessages([FromRoute] string login, [FromRoute] int? id)
         {
-            if (!ModelState.IsValid)
-            {
-                return BadRequest(ModelState);
-            }
-
-            var message = await _context.Messages.FindAsync(id);
-
-            if (message == null)
-            {
-                return NotFound();
-            }
-
-            return Ok(message);
+            if (id.HasValue)
+                return await Task.Run<IActionResult>(() =>
+                    Ok(_context.Messages.Find(id.Value)));
+            else
+                return await Task.Run<IActionResult>(() =>
+                    Ok(_context.Messages.Where(p => p.Client == login && !p.Cancelled && p.OperatorId == null)));
         }
 
-        // PUT: api/Messages/5
+        // PUT: api/Client/5
         [HttpPut("{id}")]
         public async Task<IActionResult> PutMessage([FromRoute] int id, [FromBody] Message message)
         {

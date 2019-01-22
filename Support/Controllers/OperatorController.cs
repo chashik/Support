@@ -1,7 +1,6 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using System;
-using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 
@@ -20,9 +19,11 @@ namespace Support.Controllers
 
         // GET: api/Operator
         [HttpGet]
-        public IEnumerable<Message> GetMessages() => _context.Messages
-            .Where(p => !p.Cancelled && p.OperatorId == null)
-            .OrderBy(p => p.Created);
+        public async Task<IActionResult> GetMessages()
+        {
+            return await Task.Run<IActionResult>(() =>
+                Ok(_context.Messages.Where(p => !p.Cancelled && p.OperatorId == null).OrderBy(p => p.Created)));
+        }
 
         // GET: api/Operator/2?login=operator1
         [HttpGet("{offset:int}")]

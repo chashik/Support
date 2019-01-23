@@ -8,11 +8,13 @@ namespace Test
     {
         static void Main(string[] args)
         {
-            if (args.Length > 0)
+            if (args.Length > 0) // checks arguments count first
             {
+                var arg0 = args[0].Trim('-').ToLower();
                 var conf = Configuration();
-                if (conf != null)
-                    Start(conf, args[0].Trim('-').ToLower());
+
+                if (conf != null) // then configuration file
+                    Start(arg0, conf);
             }
             else
                 ArgumentsError();
@@ -38,17 +40,17 @@ namespace Test
             }
         }
 
-        private static void Start(IConfigurationRoot conf, string arg)
+        private static void Start(string arg, IConfigurationRoot conf)
         {
             var apiHost = conf.GetValue<string>("ApiHost");
             var users = conf.GetValue<int>("Users");
             switch (arg)
             {
-                case "emulate":
-                    Emulate(apiHost, users);
+                case "sim":
+                    Simulate(conf);
                     break;
                 case "info":
-                    Inform(apiHost, users);
+                    Inform(conf);
                     break;
                 case "clear":
                     Clear(apiHost);
@@ -59,14 +61,15 @@ namespace Test
             }
         }
 
-        private static void Emulate(string apiHost, int users)
+        private static void Simulate(IConfigurationRoot conf)
         {
-            var emu = new Simulation(apiHost, users);
+            var emu = new Simulation(new MyConfig(conf));
+            emu.Start();
         }
 
-        private static void Inform(string apiHost, int users)
+        private static void Inform(IConfigurationRoot conf)
         {
-            var emu = new Simulation(apiHost, users);
+            var emu = new Simulation(new MyConfig(conf));
             var info = emu.About;
             foreach (var str in info) Console.WriteLine(str);
         }
@@ -78,11 +81,17 @@ namespace Test
 
         private static void ArgumentsError()
         {
-            Console.WriteLine("Check arguments!");
-            Console.WriteLine("Valid options are: emulate, info, clear.");
-            Console.WriteLine("  Emulate - perform emulation;");
-            Console.WriteLine("  Info - show emulation parameters, employees and messages queue statistics;");
-            Console.WriteLine("  Clear - clear messages queue.");
+            var output = new string[]
+            {
+                "Check arguments!",
+                "Valid options are: sim, info, clear.",
+                "* Sim - start simulation;",
+                "* Info - show parameters, employees and messages queue statistics;",
+                "* Clear - clear server messages queue.",
+                "Try to check params 'info' before simulation 'sim'."
+            };
+
+            foreach (var s in output) Console.WriteLine(s);
         }
     }
 }

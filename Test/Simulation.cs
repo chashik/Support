@@ -1,4 +1,5 @@
-﻿using Support;
+﻿using Microsoft.Extensions.Configuration;
+using Support;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
@@ -11,32 +12,20 @@ namespace Test
 {
     internal class Simulation : ApiClient
     {
-        private readonly int _users;
-
-        private MyConfig _myConfig;
+        private readonly MyConfig _myConfig;
 
         private IEnumerable<string> _operators;
         private IEnumerable<string> _managers;
         private IEnumerable<string> _directors;
 
-        private CancellationTokenSource _tokenSource;
-
         private ConcurrentQueue<Message> _messages;
 
-        public Simulation(string apiHost, int users) : base(apiHost)
+        public Simulation(MyConfig conf)
         {
-            _users = users;
+            _myConfig = conf;
+            ApiHost = conf.ApiHost;
 
-            Task.WaitAll(ApiConf(), Employees(), Messages());
-
-            /*using (_tokenSource = new CancellationTokenSource())
-            {
-                //_token = tokenSource.Token;
-                Console.WriteLine("Press Ctrl+C to stop emulation.");
-                Console.CancelKeyPress += Console_CancelKeyPress;
-
-                DoSomework();
-            }*/
+            Task.WaitAll(Employees(), Messages());
         }
 
         public string[] About
@@ -45,13 +34,14 @@ namespace Test
             {
                 return new string[]
                 {
-                    "* Using ApiHost: " + _apiHost,
-                    "* User emulators count: " + _users.ToString(),
+                    "* Using ApiHost: " + ApiHost,
+                    "* User emulators count: " + _myConfig.Users,
 
                     $"* Operators ({_operators.Count()}): " + string.Join(", ", _operators),
                     $"* Managers ({_managers.Count()}): " + string.Join(", ", _managers),
                     $"* Directors ({_directors.Count()}): " + string.Join(", ", _directors),
-
+                    "* Minimal interval for client activity, sec (T): " + _myConfig.T,
+                    "* Maximal interval for client activity, sec (Tc): " + _myConfig.Tc,
                     "* Minimal message age for managers, sec (Tm): " + _myConfig.Tm,
                     "* Minimal message age for directors, sec (Td): " + _myConfig.Td,
                     "* Minimal time per message for employee, sec (Tmin): " + _myConfig.Tmin,
@@ -82,31 +72,45 @@ namespace Test
                 _messages = new ConcurrentQueue<Message>(await response.Content.ReadAsAsync<IEnumerable<Message>>());
         }
 
-        private async Task ApiConf()
+        public void Start()
         {
-            using (var response = await Get("api/config"))
-                _myConfig = await response.Content.ReadAsAsync<MyConfig>();
-        }
+            Console.WriteLine("To stop simulation, press 's'");
+            WriteInline("Getting things ready..");
 
-        private void DoSomework()
-        {
-            Thread.Sleep(5000);
-        }
-
-        private void Console_CancelKeyPress(object sender, ConsoleCancelEventArgs e)
-        {
-            _tokenSource.Cancel();
-
-            Console.WriteLine("Finishing emulation, please wait..");
-
-            for (var i = 0; i < 6; i++)
+            using (var tokenSource = new CancellationTokenSource())
             {
-                Console.SetCursorPosition(0, Console.CursorTop);
-                Console.Write(i);
-                Thread.Sleep(1000);
-            }
+                var starts = new ConcurrentBag<Task>();
+                var stops = new ConcurrentBag<Task>();
+                var range = new int[_myConfig.Users];
 
-            Thread.CurrentThread.Join();
+                for (var i = 0; i < _myConfig.Users; i++) range[i] = i;
+
+                range.AsParallel().ForAll(p => 
+                {
+                    var user = new User("client" + p) { Interval = _myConfig.Tc, ApiHost = ApiHost };
+                    starts.Add(user.Start(tokenSource.Token));
+                    stops.Add(new Task(() => user.Stop()));
+                });
+
+                char ch = Console.ReadKey().KeyChar;
+                if (ch == 's' || ch == 'S')
+                {
+                    tokenSource.Cancel();
+                    Console.WriteLine($"\nStop requested, please wait for {_myConfig.Tc} (Tc) sec.");
+                    stops.AsParallel().ForAll(p => p.Start());
+                    Task.WaitAll(stops.ToArray());
+                }
+
+                try { Task.WaitAll(starts.ToArray()); }
+                catch (AggregateException ex)
+                {
+                    
+                }
+                finally
+                {
+                    Console.WriteLine();
+                }
+            }
         }
     }
 }

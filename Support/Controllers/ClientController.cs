@@ -1,5 +1,6 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using System;
 using System.Linq;
 using System.Threading.Tasks;
 
@@ -65,17 +66,18 @@ namespace Support.Controllers
 
         // POST: api/Messages
         [HttpPost]
+        [Produces("application/json")]
         public async Task<IActionResult> PostMessage([FromBody] Message message)
         {
             if (!ModelState.IsValid)
             {
                 return BadRequest(ModelState);
             }
-
+            message.Created = DateTime.Now;
             _context.Messages.Add(message);
             await _context.SaveChangesAsync();
 
-            return CreatedAtAction("GetMessage", new { id = message.Id }, message);
+            return CreatedAtAction("GetMessages", new { login = message.Client, id = message.Id }, message);
         }
 
         // DELETE: api/Messages/5

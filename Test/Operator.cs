@@ -9,7 +9,7 @@ namespace Test
 {
     internal class Operator : ApiClient
     {
-        public Operator(string login, CancellationToken token) : base(login)
+        public Operator(string login, CancellationToken token)
         {
             
         }

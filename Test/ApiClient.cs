@@ -1,47 +1,36 @@
 ﻿using System;
 using System.Net.Http;
-using System.Net.Http.Headers;
+using System.Net.Http.Formatting;
 using System.Threading.Tasks;
 
 namespace Test
 {
-    public abstract class ApiClient
+    public class ApiClient
     {
-
-        protected readonly string _apiHost;
-
-        public ApiClient(string apiHost)
-        {
-            _apiHost = apiHost;
-        }
+        public string ApiHost { get; set; } = "http://localhost";
 
         protected async Task<HttpResponseMessage> Get(string requestUri)
         {
-            using (var httpClient = new HttpClient())
-            {
-                httpClient.BaseAddress = new Uri(_apiHost);
-                httpClient.DefaultRequestHeaders.Accept.Clear();
-                httpClient.DefaultRequestHeaders.Accept.Add(
-                    new MediaTypeWithQualityHeaderValue("application/json"));
-
+            using (var httpClient = new HttpClient { BaseAddress = new Uri(ApiHost) })
                 return await httpClient.GetAsync(requestUri);
-            }
-            //return await Get(_apiHost, requestUri);
         }
 
-        /*protected static async Task<HttpResponseMessage> Get(string baseUri, string requestUri)
+        protected async Task<HttpResponseMessage> Post<T>(string requestUri, T data)
         {
-            using (var httpClient = new HttpClient())
-            {
-                httpClient.BaseAddress = new Uri(baseUri);
-                httpClient.DefaultRequestHeaders.Accept.Clear();
-                httpClient.DefaultRequestHeaders.Accept.Add(
-                    new MediaTypeWithQualityHeaderValue("application/json"));
+            using (var httpClient = new HttpClient { BaseAddress = new Uri(ApiHost) })
+                return await httpClient.PostAsync(requestUri, data, new JsonMediaTypeFormatter());
+        }
 
-                return await httpClient.GetAsync(requestUri);
-            }
-        }*/
+        protected async Task<HttpResponseMessage> Put<T>(string requestUri, T data)
+        {
+            using (var httpClient = new HttpClient { BaseAddress = new Uri(ApiHost) })
+                return await httpClient.PutAsync(requestUri, data, new JsonMediaTypeFormatter());
+        }
+
+        protected void WriteInline(string str)
+        {
+            Console.Write("\r");
+            Console.Write(str);
+        }
     }
-
-
 }

@@ -10,44 +10,43 @@ namespace Test
 {
     public class User : ApiClient
     {
-        private readonly CancellationToken _token;
         private readonly Random _random;
 
         private List<Message> _messages;
-        private int _offset;
         private string _login;
 
-        public User(CancellationToken token, string apiHost) : base(apiHost)
+        public User(string login)
         {
-            _token = token;
+            _login = login;
             _random = new Random();
         }
 
-        public void Start(string login, int offset)
+
+
+        public int Interval { get; set; } = 20;
+
+        public async Task Start(CancellationToken token)
         {
-            _login = login;
-            _offset = offset;
+            using (var response = await Get("api/client/" + _login)) // requests initial messages collection for current login
+                _messages = (await response.Content.ReadAsAsync<IEnumerable<Message>>()).ToList();
 
-            Task.Run(async () =>
-            {
-                using (var response = await Get("api/client"))
-                    _messages = (await response.Content.ReadAsAsync<IEnumerable<Message>>()).ToList();
-            }).Wait(); // requests initial messages collection for current login
-
-            while (!_token.IsCancellationRequested) Work();
+            while (!token.IsCancellationRequested) Work();
         }
 
         private void Work()
         {
-            Thread.Sleep(_random.Next(1, _offset) * 1000); // imitates client's activity time interval 
+            Thread.Sleep(_random.Next(1, Interval) * 1000); // imitates client's activity time interval 
 
             Update(); // checks status and updates messages list for current login
 
             if (_messages.Count > 0) // "flips a coin" to choose whether to create new message or cancel an older one
-                if (Convert.ToBoolean(_random.Next(0, 1)))
+            {
+                var coin = Convert.ToBoolean(_random.Next(0, 2));
+                if (coin)
                     New();
                 else
                     Cancel();
+            }
             else // creates new message
                 New();
         }
@@ -65,12 +64,20 @@ namespace Test
                 Task.Run(async () =>
                 {
                     var old = copy[i];
-                    using (var response = await Get("api/client/" + old.Id))
+                    using (var response = await Get("api/client/" + _login + "/" + old.Id))
                     {
                         fresh = await response.Content.ReadAsAsync<Message>();
 
-                        if (fresh.Finished != null) _messages.Remove(old);
-                        else _messages[_messages.IndexOf(old)] = fresh;
+                        if (fresh.Finished != null)
+                        {
+                            _messages.Remove(old);
+                            WriteInline(_login + ": message completed id: " + old.Id);
+                        }
+                        else
+                        {
+                            _messages[_messages.IndexOf(old)] = fresh;
+                            WriteInline(_login + ": message updated: " + old.Id);
+                        }
                     }
                 }).Wait();
             }
@@ -78,17 +85,31 @@ namespace Test
 
         private void New()
         {
-            throw new NotImplementedException();
+            var message = new Message
+            {
+                Client = _login,
+                Contents = DateTime.Now.ToString("yyyy.MM.dd hh:mm:ss ") + "test message from " + _login
+            };
+
+            Task.Run(async () =>
+            {
+                var response = await Post("api/client", message);
+                message = await response.Content.ReadAsAsync<Message>();
+                _messages.Add(message);
+                WriteInline(_login + ": message created id: " + message.Id);
+            }).Wait();
         }
 
         private void Cancel()
         {
-            throw new NotImplementedException();
+            //throw new NotImplementedException();
         }
 
         public void Stop()
         {
-
+            _messages.Clear();
         }
+
+        
     }
 }

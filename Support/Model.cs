@@ -1,5 +1,4 @@
 ﻿using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Configuration;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
@@ -104,24 +103,5 @@ namespace Support
         public string Answer { get; set; }
 
         public virtual Employee Operator { get; set; }
-    }
-
-    public class MyConfig
-    {
-        public MyConfig() { }
-
-        public MyConfig(IConfiguration configuration)
-        {
-            Tm = configuration.GetValue<int>("Tm");
-            Td = configuration.GetValue<int>("Td");
-            Tmin = configuration.GetValue<int>("Tmin");
-            Tmax = configuration.GetValue<int>("Tmax");
-        }
-
-
-        public int Tm { get; set; }
-        public int Td { get; set; }
-        public int Tmin { get; set; }
-        public int Tmax { get; set; }
     }
 }

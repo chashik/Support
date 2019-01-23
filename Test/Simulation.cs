@@ -1,5 +1,4 @@
-﻿using Microsoft.Extensions.Configuration;
-using Support;
+﻿using Support;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
@@ -77,40 +76,41 @@ namespace Test
             Console.WriteLine("To stop simulation, press 's'");
             WriteInline("Getting things ready..");
 
-            using (var tokenSource = new CancellationTokenSource())
+            var starts = new ConcurrentBag<Task>();
+            var stops = new ConcurrentBag<Task>();
+            var range = new int[_myConfig.Users];
+
+            for (var i = 0; i < _myConfig.Users; i++) range[i] = i;
+
+            range.AsParallel().ForAll(p =>
             {
-                var starts = new ConcurrentBag<Task>();
-                var stops = new ConcurrentBag<Task>();
-                var range = new int[_myConfig.Users];
+                var user = new User("client" + p) { Interval = _myConfig.Tc, ApiHost = ApiHost };
+                starts.Add(Task.Run(() => user.Start()));
+                stops.Add(new Task(() => user.Stop()));
+            });
 
-                for (var i = 0; i < _myConfig.Users; i++) range[i] = i;
+            char ch = Console.ReadKey().KeyChar;
+            if (ch == 's' || ch == 'S')
+            {
 
-                range.AsParallel().ForAll(p => 
-                {
-                    var user = new User("client" + p) { Interval = _myConfig.Tc, ApiHost = ApiHost };
-                    starts.Add(user.Start(tokenSource.Token));
-                    stops.Add(new Task(() => user.Stop()));
-                });
-
-                char ch = Console.ReadKey().KeyChar;
-                if (ch == 's' || ch == 'S')
-                {
-                    tokenSource.Cancel();
-                    Console.WriteLine($"\nStop requested, please wait for {_myConfig.Tc} (Tc) sec.");
-                    stops.AsParallel().ForAll(p => p.Start());
-                    Task.WaitAll(stops.ToArray());
-                }
-
-                try { Task.WaitAll(starts.ToArray()); }
-                catch (AggregateException ex)
-                {
-                    
-                }
-                finally
-                {
-                    Console.WriteLine();
-                }
+                //tokenSource.Cancel();
+                Console.WriteLine($"\nStop requested...");
+                stops.AsParallel().ForAll(p => p.Start());
+                Task.WaitAll(stops.ToArray());
             }
+
+            Task.WaitAll(starts.ToArray());
+
+            /*try { Task.WaitAll(starts.ToArray()); }
+            catch (AggregateException ex)
+            {
+                //foreach (var v in ex.InnerExceptions) Console.WriteLine(v.Message);
+            }
+            catch (Exception ex) { Console.WriteLine(ex.Message); }
+            finally
+            {
+                Console.WriteLine();
+            }*/
         }
     }
 }

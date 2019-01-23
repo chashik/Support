@@ -14,6 +14,7 @@ namespace Test
 
         private List<Message> _messages;
         private string _login;
+        private Timer _timer;
 
         public User(string login)
         {
@@ -25,18 +26,13 @@ namespace Test
 
         public int Interval { get; set; } = 20;
 
-        public async Task Start(CancellationToken token)
+        public void Start()
         {
-            using (var response = await Get("api/client/" + _login)) // requests initial messages collection for current login
-                _messages = (await response.Content.ReadAsAsync<IEnumerable<Message>>()).ToList();
-
-            while (!token.IsCancellationRequested) Work();
+            _timer = new Timer(Work, null, _random.Next(1, Interval) * 1000, Timeout.Infinite);
         }
 
-        private void Work()
+        private void Work(object state)
         {
-            Thread.Sleep(_random.Next(1, Interval) * 1000); // imitates client's activity time interval 
-
             Update(); // checks status and updates messages list for current login
 
             if (_messages.Count > 0) // "flips a coin" to choose whether to create new message or cancel an older one
@@ -49,37 +45,50 @@ namespace Test
             }
             else // creates new message
                 New();
+
+            try { _timer.Change(_random.Next(1, Interval) * 1000, Timeout.Infinite); }
+            catch (ObjectDisposedException ex) { Console.WriteLine("User {0} stopped! ({1})", _login, ex.Message); }
         }
 
         private void Update()
         {
-            var copy = new Message[_messages.Count];
-            _messages.CopyTo(copy);
-
-            Message fresh;
-            int i, l;
-
-            for (i = 0, l = copy.Length; i < l; i++)
-            {
+            if (_messages == null) // requests initial messages collection for current login
                 Task.Run(async () =>
                 {
-                    var old = copy[i];
-                    using (var response = await Get("api/client/" + _login + "/" + old.Id))
-                    {
-                        fresh = await response.Content.ReadAsAsync<Message>();
-
-                        if (fresh.Finished != null)
-                        {
-                            _messages.Remove(old);
-                            WriteInline(_login + ": message completed id: " + old.Id);
-                        }
-                        else
-                        {
-                            _messages[_messages.IndexOf(old)] = fresh;
-                            WriteInline(_login + ": message updated: " + old.Id);
-                        }
-                    }
+                    using (var response = await Get("api/client/" + _login))
+                        _messages = (await response.Content.ReadAsAsync<IEnumerable<Message>>()).ToList();
                 }).Wait();
+
+            if (_messages.Count > 0)
+            {
+                var copy = new Message[_messages.Count];
+                _messages.CopyTo(copy);
+
+                Message fresh;
+                int i, l;
+
+                for (i = 0, l = copy.Length; i < l; i++)
+                {
+                    Task.Run(async () =>
+                    {
+                        var old = copy[i];
+                        using (var response = await Get("api/client/" + _login + "/" + old.Id))
+                        {
+                            fresh = await response.Content.ReadAsAsync<Message>();
+
+                            if (fresh.Finished != null)
+                            {
+                                _messages.Remove(old);
+                                WriteInline(_login + ": message completed id: " + old.Id);
+                            }
+                            else
+                            {
+                                _messages[_messages.IndexOf(old)] = fresh;
+                                WriteInline(_login + ": message updated: " + old.Id);
+                            }
+                        }
+                    }).Wait();
+                }
             }
         }
 
@@ -107,7 +116,7 @@ namespace Test
 
         public void Stop()
         {
-            _messages.Clear();
+            if (_timer != null) _timer.Dispose();
         }
 
         

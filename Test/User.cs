@@ -11,53 +11,69 @@ namespace Test
     public class User : ApiClient
     {
         private readonly Random _random;
-
+        private readonly object _poolLock;
         private List<Message> _messages;
         private string _login;
         private Timer _timer;
+        private bool _lock;
 
         public User(string login)
         {
             _login = login;
             _random = new Random();
+            _poolLock = new object();
+            Pool = new List<Task>();
         }
 
+        public int T { get; set; }
 
+        public int Tc { get; set; }
 
-        public int Interval { get; set; } = 20;
-
-        public void Start()
+        public async Task Start(CancellationToken token)
         {
-            _timer = new Timer(Work, null, _random.Next(1, Interval) * 1000, Timeout.Infinite);
+            token.Register(Stop);
+            await Task.Run(() => _timer = new Timer(Work, null, _random.Next(1, Tc) * 1000, Timeout.Infinite));
         }
 
         private void Work(object state)
         {
-            Update(); // checks status and updates messages list for current login
-
-            if (_messages.Count > 0) // "flips a coin" to choose whether to create new message or cancel an older one
+            if (!_lock) // prevents from repeated cross calls
             {
-                var coin = Convert.ToBoolean(_random.Next(0, 2));
-                if (coin)
-                    New();
-                else
-                    Cancel();
-            }
-            else // creates new message
-                New();
+                _lock = true;
+                Update(); // checks status and updates messages list for current login
 
-            try { _timer.Change(_random.Next(1, Interval) * 1000, Timeout.Infinite); }
-            catch (ObjectDisposedException ex) { Console.WriteLine("User {0} stopped! ({1})", _login, ex.Message); }
+                if (_messages.Count > 0) // "flips a coin" to choose whether to create new message or cancel an older one
+                {
+                    var coin = Convert.ToBoolean(_random.Next(0, 2));
+                    if (coin)
+                        New();
+                    else
+                        Cancel();
+                }
+                else // creates new message
+                    New();
+
+                try { _timer.Change(_random.Next(1, Tc) * 1000, Timeout.Infinite); }
+                catch (ObjectDisposedException ex)
+                {
+                    Console.WriteLine($"\rUser {_login} iterator disposed! ({ex.Message})");
+                }
+                _lock = false;
+            }
         }
 
         private void Update()
         {
             if (_messages == null) // requests initial messages collection for current login
-                Task.Run(async () =>
-                {
-                    using (var response = await Get("api/client/" + _login))
-                        _messages = (await response.Content.ReadAsAsync<IEnumerable<Message>>()).ToList();
-                }).Wait();
+            {
+                var t = Task.Run(async () =>
+                  {
+                      using (var response = await Get("api/client/" + _login))
+                          _messages = (await response.Content.ReadAsAsync<IEnumerable<Message>>()).ToList();
+                  });
+                PoolIn(t);
+                t.ContinueWith(antecedent => PoolOut(antecedent)).Wait();
+            }
 
             if (_messages.Count > 0)
             {
@@ -69,7 +85,7 @@ namespace Test
 
                 for (i = 0, l = copy.Length; i < l; i++)
                 {
-                    Task.Run(async () =>
+                    var t = Task.Run(async () =>
                     {
                         var old = copy[i];
                         using (var response = await Get("api/client/" + _login + "/" + old.Id))
@@ -87,7 +103,9 @@ namespace Test
                                 WriteInline(_login + ": message updated: " + old.Id);
                             }
                         }
-                    }).Wait();
+                    });
+                    PoolIn(t);
+                    t.ContinueWith(antecedent => PoolOut(antecedent));
                 }
             }
         }
@@ -100,24 +118,36 @@ namespace Test
                 Contents = DateTime.Now.ToString("yyyy.MM.dd hh:mm:ss ") + "test message from " + _login
             };
 
-            Task.Run(async () =>
+            var t = Task.Run(async () =>
             {
                 var response = await Post("api/client", message);
                 message = await response.Content.ReadAsAsync<Message>();
                 _messages.Add(message);
-                WriteInline(_login + ": message created id: " + message.Id);
-            }).Wait();
+                WriteInline($"{_login} : message created id: {message.Id}");
+            });
+            PoolIn(t);
+            t.ContinueWith(antecedent => PoolOut(antecedent));
         }
 
         private void Cancel()
         {
-            //throw new NotImplementedException();
+            /*var index = _random.Next(0, _messages.Count);
+            var message = _messages[index];
+            Task.Run(async () =>
+            {
+                var response = await Put("api/client", message);
+                var status = await response.Content.ReadAsAsync<>
+                _messages.Add(message);
+                WriteInline(_login + ": message cancelled id: " + message.Id);
+            }).Wait();*/
         }
 
-        public void Stop()
-        {
-            if (_timer != null) _timer.Dispose();
-        }
+        private void PoolIn(Task t) { lock (_poolLock) Pool.Add(t); }
+        private void PoolOut(Task t) { lock (_poolLock) Pool.Remove(t); }
+
+        public List<Task> Pool { get; }
+
+        public void Stop() { if (_timer != null) _timer.Dispose(); }
 
         
     }

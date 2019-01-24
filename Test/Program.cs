@@ -1,12 +1,13 @@
 ﻿using Microsoft.Extensions.Configuration;
 using System;
 using System.IO;
+using System.Threading.Tasks;
 
 namespace Test
 {
     class Program
     {
-        static void Main(string[] args)
+        static async Task Main(string[] args)
         {
             if (args.Length > 0) // checks arguments count first
             {
@@ -14,12 +15,12 @@ namespace Test
                 var conf = Configuration();
 
                 if (conf != null) // then configuration file
-                    Start(arg0, conf);
+                    await Start(arg0, conf);
             }
             else
-                ArgumentsError();
+                await ArgumentsError();
 
-            Console.WriteLine("Press Enter to exit..");
+            Console.WriteLine("\nPress Enter to exit..");
             Console.ReadLine();
         }
 
@@ -40,58 +41,61 @@ namespace Test
             }
         }
 
-        private static void Start(string arg, IConfigurationRoot conf)
+        private static async Task Start(string arg, IConfigurationRoot conf)
         {
             var apiHost = conf.GetValue<string>("ApiHost");
             var users = conf.GetValue<int>("Users");
             switch (arg)
             {
                 case "sim":
-                    Simulate(conf);
+                    await Simulate(conf);
                     break;
                 case "info":
-                    Inform(conf);
+                    await Inform(conf);
                     break;
                 case "clear":
-                    Clear(apiHost);
+                    await Clear(apiHost);
                     break;
                 default:
-                    ArgumentsError();
+                    await ArgumentsError();
                     break;
             }
         }
 
-        private static void Simulate(IConfigurationRoot conf)
+        private static async Task Simulate(IConfigurationRoot conf)
         {
             var emu = new Simulation(new MyConfig(conf));
-            emu.Start();
+            await emu.Start();
         }
 
-        private static void Inform(IConfigurationRoot conf)
+        private static async Task Inform(IConfigurationRoot conf)
         {
             var emu = new Simulation(new MyConfig(conf));
-            var info = emu.About;
+            var info = await emu.About;
             foreach (var str in info) Console.WriteLine(str);
         }
 
-        private static void Clear(string apiHost)
+        private static async Task Clear(string apiHost)
         {
-            var cleaner = new Cleaner(apiHost);
+            throw new NotImplementedException();
         }
 
-        private static void ArgumentsError()
+        private static async Task ArgumentsError()
         {
-            var output = new string[]
+            await Task.Run(() =>
             {
+                var output = new string[]
+                {
                 "Check arguments!",
                 "Valid options are: sim, info, clear.",
                 "* Sim - start simulation;",
                 "* Info - show parameters, employees and messages queue statistics;",
                 "* Clear - clear server messages queue.",
                 "Try to check params 'info' before simulation 'sim'."
-            };
+                };
 
-            foreach (var s in output) Console.WriteLine(s);
+                foreach (var s in output) Console.WriteLine(s);
+            });
         }
     }
 }

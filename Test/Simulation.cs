@@ -27,11 +27,11 @@ namespace Test
             Task.WaitAll(Employees(), Messages());
         }
 
-        public string[] About
+        public Task<string[]> About
         {
             get
             {
-                return new string[]
+                return Task.Run(() => new string[]
                 {
                     "* Using ApiHost: " + ApiHost,
                     "* User emulators count: " + _myConfig.Users,
@@ -46,7 +46,7 @@ namespace Test
                     "* Minimal time per message for employee, sec (Tmin): " + _myConfig.Tmin,
                     "* Maximal time per message for employee, sec (Tmax): " + _myConfig.Tmax,
                     "* Awaiting messages in queue: " + _messages.Count
-                };
+                });
             }
         }
 
@@ -71,46 +71,45 @@ namespace Test
                 _messages = new ConcurrentQueue<Message>(await response.Content.ReadAsAsync<IEnumerable<Message>>());
         }
 
-        public void Start()
+        public async Task Start()
         {
             Console.WriteLine("To stop simulation, press 's'");
-            WriteInline("Getting things ready..");
+            WriteInline("Getting things ready, please wait..");
 
             var starts = new ConcurrentBag<Task>();
-            var stops = new ConcurrentBag<Task>();
+            //var stops = new ConcurrentBag<Task>();
             var range = new int[_myConfig.Users];
 
             for (var i = 0; i < _myConfig.Users; i++) range[i] = i;
 
-            range.AsParallel().ForAll(p =>
+            using (var source = new CancellationTokenSource())
             {
-                var user = new User("client" + p) { Interval = _myConfig.Tc, ApiHost = ApiHost };
-                starts.Add(Task.Run(() => user.Start()));
-                stops.Add(new Task(() => user.Stop()));
-            });
+                await Task.Run(() =>
+                {
+                    var token = source.Token;
+                    var users = new ConcurrentBag<User>();
+                    range.AsParallel().ForAll(p =>
+                    {
+                        var user = new User("client" + p) { T = _myConfig.T, Tc = _myConfig.Tc, ApiHost = ApiHost };
+                        starts.Add(user.Start(token));
+                        users.Add(user);
+                    });
 
-            char ch = Console.ReadKey().KeyChar;
-            if (ch == 's' || ch == 'S')
-            {
+                    char ch = Console.ReadKey().KeyChar;
+                    if (ch == 's' || ch == 'S')
+                    {
+                        Console.WriteLine($"\nStop requested... ");
+                        source.Cancel();
+                    }
 
-                //tokenSource.Cancel();
-                Console.WriteLine($"\nStop requested...");
-                stops.AsParallel().ForAll(p => p.Start());
-                Task.WaitAll(stops.ToArray());
+                    try { Task.WaitAll(starts.ToArray()); }
+                    catch (AggregateException ex) { foreach (var v in ex.InnerExceptions) Console.WriteLine(ex.Message); }
+                    catch (Exception ex) { Console.WriteLine("Other exception: {0}", ex.Message); }
+
+                    Console.WriteLine("\rFinishing tasks..");
+                    foreach (var u in users) while (u.Pool.Count > 0) Thread.Sleep(1000);
+                });
             }
-
-            Task.WaitAll(starts.ToArray());
-
-            /*try { Task.WaitAll(starts.ToArray()); }
-            catch (AggregateException ex)
-            {
-                //foreach (var v in ex.InnerExceptions) Console.WriteLine(v.Message);
-            }
-            catch (Exception ex) { Console.WriteLine(ex.Message); }
-            finally
-            {
-                Console.WriteLine();
-            }*/
         }
     }
 }

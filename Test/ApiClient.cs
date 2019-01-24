@@ -29,8 +29,8 @@ namespace Test
 
         protected void WriteInline(string str)
         {
-            Console.Write("\r");
-            Console.Write(str);
+            Console.Write("\r  ");
+            Console.Write($"\r{str}");
         }
     }
 }

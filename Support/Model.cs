@@ -103,5 +103,7 @@ namespace Support
         public string Answer { get; set; }
 
         public virtual Employee Operator { get; set; }
+
+        public Message Copy() => MemberwiseClone() as Message;
     }
 }

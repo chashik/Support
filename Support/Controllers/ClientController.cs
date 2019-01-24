@@ -43,6 +43,8 @@ namespace Support.Controllers
                 return BadRequest();
             }
 
+            if (message.Cancelled) message.Finished = DateTime.Now;
+
             _context.Entry(message).State = EntityState.Modified;
 
             try
@@ -70,14 +72,14 @@ namespace Support.Controllers
         public async Task<IActionResult> PostMessage([FromBody] Message message)
         {
             if (!ModelState.IsValid)
-            {
                 return BadRequest(ModelState);
-            }
+
             message.Created = DateTime.Now;
             _context.Messages.Add(message);
             await _context.SaveChangesAsync();
 
-            return CreatedAtAction("GetMessages", new { login = message.Client, id = message.Id }, message);
+            return CreatedAtAction("GetMessages",
+                new { login = message.Client, id = message.Id }, message);
         }
 
         // DELETE: api/Messages/5
@@ -101,9 +103,6 @@ namespace Support.Controllers
             return Ok(message);
         }
 
-        private bool MessageExists(int id)
-        {
-            return _context.Messages.Any(e => e.Id == id);
-        }
+        private bool MessageExists(int id) => _context.Messages.Any(e => e.Id == id);
     }
 }

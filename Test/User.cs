@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net;
 using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
@@ -37,7 +38,7 @@ namespace Test
 
         private void Work(object state)
         {
-            if (!_lock) // prevents from repeated cross calls
+            if (!_lock) // repeated cross calls are omitted
             {
                 _lock = true;
                 Update(); // checks status and updates messages list for current login
@@ -45,6 +46,7 @@ namespace Test
                 if (_messages.Count > 0) // "flips a coin" to choose whether to create new message or cancel an older one
                 {
                     var coin = Convert.ToBoolean(_random.Next(0, 2));
+
                     if (coin)
                         New();
                     else
@@ -67,12 +69,19 @@ namespace Test
             if (_messages == null) // requests initial messages collection for current login
             {
                 var t = Task.Run(async () =>
-                  {
-                      using (var response = await Get("api/client/" + _login))
-                          _messages = (await response.Content.ReadAsAsync<IEnumerable<Message>>()).ToList();
-                  });
+                {
+                    using (var response = await Get($"api/client/{_login}"))
+                    {
+                        var status = response.StatusCode;
+                        if (status == HttpStatusCode.OK)
+                            _messages = (await response.Content.ReadAsAsync<IEnumerable<Message>>()).ToList();
+                        else
+                            WriteInline($"Unexpected result, HttpStatus: {status} (initial collection)");
+                    }
+                });
                 PoolIn(t);
-                t.ContinueWith(antecedent => PoolOut(antecedent)).Wait();
+                t.ContinueWith(antecedent => PoolOut(antecedent));
+                t.Wait();
             }
 
             if (_messages.Count > 0)
@@ -88,20 +97,26 @@ namespace Test
                     var t = Task.Run(async () =>
                     {
                         var old = copy[i];
-                        using (var response = await Get("api/client/" + _login + "/" + old.Id))
+                    using (var response = await Get($"api/client/{_login}/{old.Id}"))
                         {
-                            fresh = await response.Content.ReadAsAsync<Message>();
-
-                            if (fresh.Finished != null)
+                            var status = response.StatusCode;
+                            if (status == HttpStatusCode.OK)
                             {
-                                _messages.Remove(old);
-                                WriteInline(_login + ": message completed id: " + old.Id);
+                                fresh = await response.Content.ReadAsAsync<Message>();
+
+                                if (fresh.Finished != null)
+                                {
+                                    _messages.Remove(old);
+                                    WriteInline($"{_login}: message completed (id: {old.Id})");
+                                }
+                                else
+                                {
+                                    _messages[_messages.IndexOf(old)] = fresh;
+                                    WriteInline($"{_login}: message updated (id: {old.Id})");
+                                }
                             }
                             else
-                            {
-                                _messages[_messages.IndexOf(old)] = fresh;
-                                WriteInline(_login + ": message updated: " + old.Id);
-                            }
+                                WriteInline($"Unexpected result, HttpStatus: {status}");
                         }
                     });
                     PoolIn(t);
@@ -120,10 +135,18 @@ namespace Test
 
             var t = Task.Run(async () =>
             {
-                var response = await Post("api/client", message);
-                message = await response.Content.ReadAsAsync<Message>();
-                _messages.Add(message);
-                WriteInline($"{_login} : message created id: {message.Id}");
+                using (var response = await Post("api/client", message))
+                {
+                    var status = response.StatusCode;
+                    if (status == HttpStatusCode.Created)
+                    {
+                        message = await response.Content.ReadAsAsync<Message>();
+                        _messages.Add(message);
+                        WriteInline($"{_login} : message created (id: {message.Id})");
+                    }
+                    else
+                        WriteInline($"Unexpected result, HttpStatus: {status}");
+                }
             });
             PoolIn(t);
             t.ContinueWith(antecedent => PoolOut(antecedent));
@@ -131,15 +154,25 @@ namespace Test
 
         private void Cancel()
         {
-            /*var index = _random.Next(0, _messages.Count);
+            var index = _random.Next(0, _messages.Count);
             var message = _messages[index];
+            var copy = message.Copy();
+            copy.Cancelled = true;
+
             Task.Run(async () =>
             {
-                var response = await Put("api/client", message);
-                var status = await response.Content.ReadAsAsync<>
-                _messages.Add(message);
-                WriteInline(_login + ": message cancelled id: " + message.Id);
-            }).Wait();*/
+                using (var response = await Put($"api/client/{message.Id}", copy))
+                {
+                    var status = response.StatusCode;
+                    if (status == HttpStatusCode.NoContent)
+                    {
+                        _messages.Remove(message);
+                        WriteInline($"{ _login}: message cancelled (id: {message.Id})");
+                    }
+                    else
+                        WriteInline($"Unexpected result, HttpStatus: {status}");
+                }
+            });
         }
 
         private void PoolIn(Task t) { lock (_poolLock) Pool.Add(t); }

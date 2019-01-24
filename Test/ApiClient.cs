@@ -27,10 +27,6 @@ namespace Test
                 return await httpClient.PutAsync(requestUri, data, new JsonMediaTypeFormatter());
         }
 
-        protected void WriteInline(string str)
-        {
-            Console.Write("\r  ");
-            Console.Write($"\r{str}");
-        }
+        protected void WriteInline(string str) => Console.Write("{0}\r", str);
     }
 }

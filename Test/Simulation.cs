@@ -33,19 +33,19 @@ namespace Test
             {
                 return Task.Run(() => new string[]
                 {
-                    "* Using ApiHost: " + ApiHost,
-                    "* User emulators count: " + _myConfig.Users,
+                    $"* Using ApiHost: {ApiHost}",
+                    $"* User emulators count: {_myConfig.Users}",
 
-                    $"* Operators ({_operators.Count()}): " + string.Join(", ", _operators),
-                    $"* Managers ({_managers.Count()}): " + string.Join(", ", _managers),
-                    $"* Directors ({_directors.Count()}): " + string.Join(", ", _directors),
-                    "* Minimal interval for client activity, sec (T): " + _myConfig.T,
-                    "* Maximal interval for client activity, sec (Tc): " + _myConfig.Tc,
-                    "* Minimal message age for managers, sec (Tm): " + _myConfig.Tm,
-                    "* Minimal message age for directors, sec (Td): " + _myConfig.Td,
-                    "* Minimal time per message for employee, sec (Tmin): " + _myConfig.Tmin,
-                    "* Maximal time per message for employee, sec (Tmax): " + _myConfig.Tmax,
-                    "* Awaiting messages in queue: " + _messages.Count
+                    $"* Operators ({_operators.Count()}): {string.Join(", ", _operators)}",
+                    $"* Managers ({_managers.Count()}): {string.Join(", ", _managers)}",
+                    $"* Directors ({_directors.Count()}): {string.Join(", ", _directors)}",
+                    $"* Minimal interval for client activity, sec (T): {_myConfig.T}",
+                    $"* Maximal interval for client activity, sec (Tc): {_myConfig.Tc}",
+                    $"* Minimal message age for managers, sec (Tm): {_myConfig.Tm}",
+                    $"* Minimal message age for directors, sec (Td): {_myConfig.Td}",
+                    $"* Minimal time per message for employee, sec (Tmin): {_myConfig.Tmin}",
+                    $"* Maximal time per message for employee, sec (Tmax): {_myConfig.Tmax}",
+                    $"* Awaiting messages in queue: {_messages.Count}"
                 });
             }
         }
@@ -77,10 +77,10 @@ namespace Test
             WriteInline("Getting things ready, please wait..");
 
             var starts = new ConcurrentBag<Task>();
-            //var stops = new ConcurrentBag<Task>();
             var range = new int[_myConfig.Users];
 
-            for (var i = 0; i < _myConfig.Users; i++) range[i] = i;
+            int i, l;
+            for (i = 0, l = _myConfig.Users; i < l; i++) range[i] = i;
 
             using (var source = new CancellationTokenSource())
             {
@@ -90,21 +90,41 @@ namespace Test
                     var users = new ConcurrentBag<User>();
                     range.AsParallel().ForAll(p =>
                     {
-                        var user = new User("client" + p) { T = _myConfig.T, Tc = _myConfig.Tc, ApiHost = ApiHost };
+                        var user = new User("client" + p)
+                        {
+                            T = _myConfig.T,
+                            Tc = _myConfig.Tc,
+                            ApiHost = ApiHost
+                        };
                         starts.Add(user.Start(token));
                         users.Add(user);
                     });
 
-                    char ch = Console.ReadKey().KeyChar;
-                    if (ch == 's' || ch == 'S')
+                    var waitingInput = true;
+
+                    while (waitingInput)
                     {
-                        Console.WriteLine($"\nStop requested... ");
-                        source.Cancel();
+                        char ch = Console.ReadKey().KeyChar;
+                        if (ch == 's' || ch == 'S' || ch == 'ы' || ch == 'Ы')
+                        {
+                            Console.WriteLine($"\nStop requested... ");
+                            source.Cancel();
+                            waitingInput = false;
+                        }
                     }
 
-                    try { Task.WaitAll(starts.ToArray()); }
-                    catch (AggregateException ex) { foreach (var v in ex.InnerExceptions) Console.WriteLine(ex.Message); }
-                    catch (Exception ex) { Console.WriteLine("Other exception: {0}", ex.Message); }
+                    try
+                    {
+                        Task.WaitAll(starts.ToArray());
+                    }
+                    catch (AggregateException ex)
+                    {
+                        foreach (var v in ex.InnerExceptions) Console.WriteLine(ex.Message);
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine("Other exception: {0}", ex.Message);
+                    }
 
                     Console.WriteLine("\rFinishing tasks..");
                     foreach (var u in users) while (u.Pool.Count > 0) Thread.Sleep(1000);

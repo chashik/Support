@@ -72,6 +72,8 @@ namespace Support
 
         [SuppressMessage("Microsoft.Usage", "CA2227:CollectionPropertiesShouldBeReadOnly")]
         public virtual ICollection<Message> Messages { get; set; }
+
+        public Employee ShallowCopy() => (Employee)MemberwiseClone();
     }
 
     [Table("message")]
@@ -104,6 +106,6 @@ namespace Support
 
         public virtual Employee Operator { get; set; }
 
-        public Message Copy() => MemberwiseClone() as Message;
+        public Message ShallowCopy() => (Message)MemberwiseClone();
     }
 }

@@ -9,14 +9,15 @@ using System.Threading.Tasks;
 
 namespace Test
 {
-    public class User : ApiClient
+    public class User : ApiClient, ISimulator
     {
-        private readonly Random _random;
         private readonly object _poolLock;
+        private readonly Random _random;
+
         private List<Message> _messages;
         private string _login;
         private Timer _timer;
-        private bool _lock;
+        private bool _workLock;
 
         public User(string login)
         {
@@ -30,17 +31,18 @@ namespace Test
 
         public int Tc { get; set; }
 
-        public async Task Start(CancellationToken token)
+        public void Start(CancellationToken token)
         {
             token.Register(Stop);
-            await Task.Run(() => _timer = new Timer(Work, null, _random.Next(1, Tc) * 1000, Timeout.Infinite));
+            _timer = new Timer(Work, null, _random.Next(T, Tc), Timeout.Infinite);
         }
 
         private void Work(object state)
         {
-            if (!_lock) // repeated cross calls are omitted
+            if (!_workLock) // repeated cross calls are omitted
             {
-                _lock = true;
+                _workLock = true;
+
                 Update(); // checks status and updates messages list for current login
 
                 if (_messages.Count > 0) // "flips a coin" to choose whether to create new message or cancel an older one
@@ -55,12 +57,16 @@ namespace Test
                 else // creates new message
                     New();
 
-                try { _timer.Change(_random.Next(1, Tc) * 1000, Timeout.Infinite); }
+                try
+                {
+                    _timer.Change(_random.Next(T, Tc) * 1000, Timeout.Infinite);
+                }
                 catch (ObjectDisposedException ex)
                 {
                     Console.WriteLine($"\rUser {_login} iterator disposed! ({ex.Message})");
                 }
-                _lock = false;
+
+                _workLock = false;
             }
         }
 
@@ -76,12 +82,13 @@ namespace Test
                         if (status == HttpStatusCode.OK)
                             _messages = (await response.Content.ReadAsAsync<IEnumerable<Message>>()).ToList();
                         else
-                            WriteInline($"Unexpected result, HttpStatus: {status} (initial collection)");
+                            WriteInline($"{_login}: unexpected result, HttpStatus: {status} (initial collection)");
                     }
                 });
+
                 PoolIn(t);
                 t.ContinueWith(antecedent => PoolOut(antecedent));
-                t.Wait();
+                t.Wait(); // waiting while collection is prepared
             }
 
             if (_messages.Count > 0)
@@ -97,7 +104,7 @@ namespace Test
                     var t = Task.Run(async () =>
                     {
                         var old = copy[i];
-                    using (var response = await Get($"api/client/{_login}/{old.Id}"))
+                        using (var response = await Get($"api/client/{_login}/{old.Id}"))
                         {
                             var status = response.StatusCode;
                             if (status == HttpStatusCode.OK)
@@ -116,7 +123,7 @@ namespace Test
                                 }
                             }
                             else
-                                WriteInline($"Unexpected result, HttpStatus: {status}");
+                                WriteInline($"{_login}: unexpected result, HttpStatus: {status}");
                         }
                     });
                     PoolIn(t);
@@ -145,7 +152,7 @@ namespace Test
                         WriteInline($"{_login} : message created (id: {message.Id})");
                     }
                     else
-                        WriteInline($"Unexpected result, HttpStatus: {status}");
+                        WriteInline($"{_login}: unexpected result, HttpStatus: {status}");
                 }
             });
             PoolIn(t);
@@ -156,7 +163,7 @@ namespace Test
         {
             var index = _random.Next(0, _messages.Count);
             var message = _messages[index];
-            var copy = message.Copy();
+            var copy = message.ShallowCopy();
             copy.Cancelled = true;
 
             Task.Run(async () =>
@@ -170,17 +177,18 @@ namespace Test
                         WriteInline($"{ _login}: message cancelled (id: {message.Id})");
                     }
                     else
-                        WriteInline($"Unexpected result, HttpStatus: {status}");
+                        WriteInline($"{_login}: unexpected result, HttpStatus: {status}");
                 }
             });
         }
 
         private void PoolIn(Task t) { lock (_poolLock) Pool.Add(t); }
+
         private void PoolOut(Task t) { lock (_poolLock) Pool.Remove(t); }
 
         public List<Task> Pool { get; }
 
-        public void Stop() { if (_timer != null) _timer.Dispose(); }
+        private void Stop() { if (_timer != null) _timer.Dispose(); }
 
         
     }

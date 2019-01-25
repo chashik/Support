@@ -1,6 +1,5 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 
@@ -12,17 +11,15 @@ namespace Support.Controllers
     {
         private readonly SupportContext _context;
 
-        public EmployeesController(SupportContext context)
-        {
+        public EmployeesController(SupportContext context) =>
             _context = context;
-        }
 
         // GET: api/Employees
         [HttpGet]
         public async Task<IActionResult> GetEmployees()
         {
             return await Task.Run<IActionResult>(() => Ok(_context.Employees
-                .Select(p => new Employee() { Login = p.Login, DirectorId = p.DirectorId, ManagerId = p.ManagerId })));
+                .Select(p => p.ShallowCopy())));
         }
 
         // GET: api/Employees/5
@@ -30,16 +27,12 @@ namespace Support.Controllers
         public async Task<IActionResult> GetEmployee([FromRoute] string id)
         {
             if (!ModelState.IsValid)
-            {
                 return BadRequest(ModelState);
-            }
 
             var employee = await _context.Employees.FindAsync(id);
 
             if (employee == null)
-            {
                 return NotFound();
-            }
 
             return Ok(employee);
         }
@@ -49,14 +42,10 @@ namespace Support.Controllers
         public async Task<IActionResult> PutEmployee([FromRoute] string id, [FromBody] Employee employee)
         {
             if (!ModelState.IsValid)
-            {
                 return BadRequest(ModelState);
-            }
 
             if (id != employee.Login)
-            {
                 return BadRequest();
-            }
 
             _context.Entry(employee).State = EntityState.Modified;
 
@@ -67,13 +56,9 @@ namespace Support.Controllers
             catch (DbUpdateConcurrencyException)
             {
                 if (!EmployeeExists(id))
-                {
                     return NotFound();
-                }
                 else
-                {
                     throw;
-                }
             }
 
             return NoContent();
@@ -84,9 +69,7 @@ namespace Support.Controllers
         public async Task<IActionResult> PostEmployee([FromBody] Employee employee)
         {
             if (!ModelState.IsValid)
-            {
                 return BadRequest(ModelState);
-            }
 
             _context.Employees.Add(employee);
             await _context.SaveChangesAsync();
@@ -99,15 +82,11 @@ namespace Support.Controllers
         public async Task<IActionResult> DeleteEmployee([FromRoute] string id)
         {
             if (!ModelState.IsValid)
-            {
                 return BadRequest(ModelState);
-            }
 
             var employee = await _context.Employees.FindAsync(id);
             if (employee == null)
-            {
                 return NotFound();
-            }
 
             _context.Employees.Remove(employee);
             await _context.SaveChangesAsync();
@@ -115,9 +94,7 @@ namespace Support.Controllers
             return Ok(employee);
         }
 
-        private bool EmployeeExists(string id)
-        {
-            return _context.Employees.Any(e => e.Login == id);
-        }
+        private bool EmployeeExists(string id) => 
+            _context.Employees.Any(e => e.Login == id);
     }
 }

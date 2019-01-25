@@ -67,7 +67,7 @@ namespace Test
 
         private async Task Messages()
         {
-            using (var response = await Get("api/operator"))
+            using (var response = await Get("api/client"))
                 _messages = new ConcurrentQueue<Message>(await response.Content.ReadAsAsync<IEnumerable<Message>>());
         }
 
@@ -76,9 +76,7 @@ namespace Test
             Console.WriteLine("To stop simulation, press 's'");
             WriteInline("Getting things ready, please wait..");
 
-            var starts = new ConcurrentBag<Task>();
             var range = new int[_myConfig.Users];
-
             int i, l;
             for (i = 0, l = _myConfig.Users; i < l; i++) range[i] = i;
 
@@ -87,18 +85,44 @@ namespace Test
                 await Task.Run(() =>
                 {
                     var token = source.Token;
-                    var users = new ConcurrentBag<User>();
-                    range.AsParallel().ForAll(p =>
+                    var starts = new ConcurrentBag<Task>();
+                    var simulators = new ConcurrentBag<ISimulator>();
+
+                    var t1 = Task.Run(() => range.AsParallel().ForAll(p =>
+                         {
+                             var user = new User("client" + p)
+                             {
+                                 T = _myConfig.T,
+                                 Tc = _myConfig.Tc,
+                                 ApiHost = ApiHost
+                             };
+                             starts.Add(new Task(() => user.Start(token)));
+                             simulators.Add(user);
+                         }));
+
+                    void createOperator(string login, int offset)
                     {
-                        var user = new User("client" + p)
+                        var employee = new Operator(login)
                         {
-                            T = _myConfig.T,
-                            Tc = _myConfig.Tc,
+                            Offset = offset,
+                            Tmin = _myConfig.Tmin,
+                            Tmax = _myConfig.Tmax,
                             ApiHost = ApiHost
                         };
-                        starts.Add(user.Start(token));
-                        users.Add(user);
-                    });
+                        starts.Add(new Task(() => employee.Start(token)));
+                        simulators.Add(employee);
+                    }
+
+                    var t2 = Task.Run(() =>
+                      {
+                          foreach (var o in _operators) createOperator(o, 0);
+                          foreach (var m in _managers) createOperator(m, _myConfig.Tm);
+                          foreach (var d in _directors) createOperator(d, _myConfig.Td);
+                      });
+
+                    Task.WaitAll(t1, t2);
+
+                    starts.AsParallel().ForAll(p => p.Start());
 
                     var waitingInput = true;
 
@@ -127,7 +151,7 @@ namespace Test
                     }
 
                     Console.WriteLine("\rFinishing tasks..");
-                    foreach (var u in users) while (u.Pool.Count > 0) Thread.Sleep(1000);
+                    foreach (var u in simulators) while (u.Pool.Count > 0) Thread.Sleep(1000);
                 });
             }
         }

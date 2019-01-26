@@ -1,9 +1,9 @@
 ﻿using Support;
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net;
-using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -14,7 +14,7 @@ namespace Test
         private readonly object _poolLock;
         private readonly Random _random;
 
-        private List<Message> _messages;
+        private ConcurrentBag<Message> _messages;
         private string _login;
         private Timer _timer;
         private bool _workLock;
@@ -74,61 +74,34 @@ namespace Test
         {
             if (_messages == null) // requests initial messages collection for current login
             {
-                var t = Task.Run(async () =>
+                if (Get($"api/client/{_login}", out HttpStatusCode code, out IEnumerable<Message> messages))
                 {
-                    using (var response = await Get($"api/client/{_login}"))
-                    {
-                        var status = response.StatusCode;
-                        if (status == HttpStatusCode.OK)
-                            _messages = (await response.Content.ReadAsAsync<IEnumerable<Message>>()).ToList();
-                        else
-                            WriteInline($"{_login}: unexpected result, HttpStatus: {status} (initial collection)");
-                    }
-                });
-
-                PoolIn(t);
-                t.ContinueWith(antecedent => PoolOut(antecedent));
-                t.Wait(); // waiting while collection is prepared
+                    _messages = new ConcurrentBag<Message>(messages);
+                    WriteInline($"{_login}: {_messages.Count} unanswered messages loaded");
+                }
+                else
+                    WriteInline($"{_login}: unexpected result, HttpStatus: {code} (initial collection)");
             }
 
             if (_messages.Count > 0)
             {
-                var copy = new Message[_messages.Count];
-                _messages.CopyTo(copy);
-
-                Message fresh;
-                int i, l;
-
-                for (i = 0, l = copy.Length; i < l; i++)
+                var updated = new List<Message>();
+                while (_messages.TryTake(out Message message))
                 {
-                    var t = Task.Run(async () =>
+                    if (Get($"api/client/{_login}/{message.Id}", out HttpStatusCode code, out Message fresh))
                     {
-                        var old = copy[i];
-                        using (var response = await Get($"api/client/{_login}/{old.Id}"))
+                        if (fresh.Finished != null)
+                            WriteInline($"{_login}: message completed (id: {message.Id})");
+                        else
                         {
-                            var status = response.StatusCode;
-                            if (status == HttpStatusCode.OK)
-                            {
-                                fresh = await response.Content.ReadAsAsync<Message>();
-
-                                if (fresh.Finished != null)
-                                {
-                                    _messages.Remove(old);
-                                    WriteInline($"{_login}: message completed (id: {old.Id})");
-                                }
-                                else
-                                {
-                                    _messages[_messages.IndexOf(old)] = fresh;
-                                    WriteInline($"{_login}: message updated (id: {old.Id})");
-                                }
-                            }
-                            else
-                                WriteInline($"{_login}: unexpected result, HttpStatus: {status}");
+                            updated.Add(fresh);
+                            WriteInline($"{_login}: message updated (id: {message.Id})");
                         }
-                    });
-                    PoolIn(t);
-                    t.ContinueWith(antecedent => PoolOut(antecedent));
+                    }
+                    else
+                        WriteInline($"{_login}: unexpected updating result, HttpStatus: {code}");
                 }
+                _messages = new ConcurrentBag<Message>(updated.Distinct());
             }
         }
 
@@ -137,23 +110,18 @@ namespace Test
             var message = new Message
             {
                 Client = _login,
-                Contents = DateTime.Now.ToString("yyyy.MM.dd hh:mm:ss ") + "test message from " + _login
+                Contents = $"{DateTime.Now.ToString("yyyy.MM.dd hh:mm:ss ")} test message from {_login}"
             };
 
-            var t = Task.Run(async () =>
+            var t = Task.Run(() =>
             {
-                using (var response = await Post("api/client", message))
+                if (Post("api/client", message, out HttpStatusCode code, out message))
                 {
-                    var status = response.StatusCode;
-                    if (status == HttpStatusCode.Created)
-                    {
-                        message = await response.Content.ReadAsAsync<Message>();
-                        _messages.Add(message);
-                        WriteInline($"{_login} : message created (id: {message.Id})");
-                    }
-                    else
-                        WriteInline($"{_login}: unexpected result, HttpStatus: {status}");
+                    _messages.Add(message);
+                    WriteInline($"{_login} : message created (id: {message.Id})");
                 }
+                else
+                    WriteInline($"{_login}: unexpected creation result, HttpStatus: {code}");
             });
             PoolIn(t);
             t.ContinueWith(antecedent => PoolOut(antecedent));
@@ -161,25 +129,25 @@ namespace Test
 
         private void Cancel()
         {
-            var index = _random.Next(0, _messages.Count);
-            var message = _messages[index];
-            var copy = message.ShallowCopy();
-            copy.Cancelled = true;
-
-            Task.Run(async () =>
+            if (_messages.TryTake(out Message message))
             {
-                using (var response = await Put($"api/client/{message.Id}", copy))
+                var copy = message.ShallowCopy();
+                copy.Cancelled = true;
+
+                var t = Task.Run(() =>
                 {
-                    var status = response.StatusCode;
-                    if (status == HttpStatusCode.NoContent)
-                    {
-                        _messages.Remove(message);
+                    if (Put($"api/client/{message.Id}", copy, out HttpStatusCode code))
                         WriteInline($"{ _login}: message cancelled (id: {message.Id})");
-                    }
                     else
-                        WriteInline($"{_login}: unexpected result, HttpStatus: {status}");
-                }
-            });
+                    {
+                        _messages.Add(message);
+                        WriteInline($"{_login}: unexpected cancellation result, HttpStatus: {code}");
+                    }
+                });
+
+                PoolIn(t);
+                t.ContinueWith(antecedent => PoolOut(antecedent));
+            }
         }
 
         private void PoolIn(Task t) { lock (_poolLock) Pool.Add(t); }

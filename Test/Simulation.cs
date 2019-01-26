@@ -3,6 +3,7 @@ using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net;
 using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
@@ -17,7 +18,7 @@ namespace Test
         private IEnumerable<string> _managers;
         private IEnumerable<string> _directors;
 
-        private ConcurrentQueue<Message> _messages;
+        private IEnumerable<Message> _messages;
 
         public Simulation(MyConfig conf)
         {
@@ -45,30 +46,41 @@ namespace Test
                     $"* Minimal message age for directors, sec (Td): {_myConfig.Td}",
                     $"* Minimal time per message for employee, sec (Tmin): {_myConfig.Tmin}",
                     $"* Maximal time per message for employee, sec (Tmax): {_myConfig.Tmax}",
-                    $"* Awaiting messages in queue: {_messages.Count}"
+                    $"* Awaiting messages in queue: {_messages.Count()}"
                 });
             }
         }
 
         private async Task Employees()
         {
-            using (var response = await Get("api/employees"))
+            await Task.Run(() =>
             {
-                var employees = await response.Content.ReadAsAsync<IEnumerable<Employee>>();
-
-                var t1 = Task.Run(() => _operators = employees.Where(p => p.ManagerId != null).Select(p => p.Login));
-                var t2 = Task.Run(() => _managers = employees.Where(p => p.DirectorId != null).Select(p => p.Login));
-                var t3 = Task.Run(() => _directors = employees.Where(p => p.ManagerId == null && p.DirectorId == null)
-                    .Select(p => p.Login));
-
-                Task.WaitAll(t1, t2, t3);
-            }
+                if (Get("api/employees", out HttpStatusCode code, out IEnumerable<Employee> employees))
+                {
+                    _operators = employees
+                        .Where(p => p.ManagerId != null).Select(p => p.Login);
+                    _managers = employees
+                        .Where(p => p.DirectorId != null).Select(p => p.Login);
+                    _directors = employees
+                        .Where(p => p.ManagerId == null && p.DirectorId == null)
+                        .Select(p => p.Login);
+                }
+                else
+                    WriteInline($"Loading employees failed: {code}");
+            });
         }
 
         private async Task Messages()
         {
-            using (var response = await Get("api/client"))
-                _messages = new ConcurrentQueue<Message>(await response.Content.ReadAsAsync<IEnumerable<Message>>());
+            await Task.Run(() =>
+            {
+                if (Get("api/client", out HttpStatusCode code, out _messages))
+                {
+
+                }
+                else
+                    WriteInline($"Loading unanswered messages failed: {code}");
+            });
         }
 
         public async Task Start()
@@ -115,9 +127,12 @@ namespace Test
 
                     var t2 = Task.Run(() =>
                       {
-                          foreach (var o in _operators) createOperator(o, 0);
-                          foreach (var m in _managers) createOperator(m, _myConfig.Tm);
-                          foreach (var d in _directors) createOperator(d, _myConfig.Td);
+                          foreach (var o in _operators)
+                              createOperator(o, 0);
+                          foreach (var m in _managers)
+                              createOperator(m, _myConfig.Tm);
+                          foreach (var d in _directors)
+                              createOperator(d, _myConfig.Td);
                       });
 
                     Task.WaitAll(t1, t2);
@@ -143,15 +158,18 @@ namespace Test
                     }
                     catch (AggregateException ex)
                     {
-                        foreach (var v in ex.InnerExceptions) Console.WriteLine(ex.Message);
+                        foreach (var v in ex.InnerExceptions)
+                            Console.WriteLine(ex.Message);
                     }
                     catch (Exception ex)
                     {
                         Console.WriteLine("Other exception: {0}", ex.Message);
                     }
 
-                    Console.WriteLine("\rFinishing tasks..");
-                    foreach (var u in simulators) while (u.Pool.Count > 0) Thread.Sleep(1000);
+                    Console.WriteLine("\rFinishing tasks, wait..");
+
+                    foreach (var u in simulators) // waiting while child tasks are not finished
+                        while (u.Pool.Count > 0) Thread.Sleep(1000);
                 });
             }
         }

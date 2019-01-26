@@ -21,7 +21,7 @@ namespace Support.Controllers
         [HttpGet]
         public async Task<IActionResult> GetMessages() =>
             await Task.Run<IActionResult>(() => Ok(_context.Messages
-                .Where(p => p.Finished == null).Select(p => p.ShallowCopy())));
+                .Where(p => p.Finished == null).Select(p => p.ShallowCopy()).ToArray()));
 
 
         // GET: api/Client/login - unanswered messages for client's login
@@ -29,7 +29,7 @@ namespace Support.Controllers
         public async Task<IActionResult> GetMessages([FromRoute] string login) =>
             await Task.Run<IActionResult>(() => Ok(_context.Messages
                 .Where(p => p.Finished == null && p.Client == login)
-                .Select(p => p.ShallowCopy())));
+                .Select(p => p.ShallowCopy()).ToArray()));
 
 
         // GET: api/Client/login/num - common message selector 

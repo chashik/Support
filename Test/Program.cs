@@ -22,6 +22,13 @@ namespace Test
 
             Console.WriteLine("\nPress Enter to exit..");
             Console.ReadLine();
+            
+            /*await Task.Run(() =>
+            {
+                var ago = DateTime.Now.AddSeconds(-1000);
+                Console.WriteLine(DateTime.Now > ago); // true
+                Console.ReadLine();
+            });*/
         }
 
         private static IConfigurationRoot Configuration()

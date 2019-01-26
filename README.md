@@ -3,11 +3,13 @@
 #### Features:
 - Create message;
 - Update message;
+- Delete all messages;
 - List messages;
 - List employees;
 ####
 #### Highlights: 
-- 3 types of employees: operator - processes all messages, manager - processes messages of age > (Tm), director - processes messages of age > (Td);
+- REST, task-based pattern;
 - message queue as database table;
 - DBContext DI;
-- test console app with support user and employee simulators.
+- configurable test console app with support user and employee simulators;
+- 3 types of employees: operator - processes all messages, manager - processes messages of age > (Tm), director - processes messages of age > (Td), minimum (Tmin) and maximun (Tmax) interval for employee simulator to process message and aquire next one, minimum (T) and maximun (Tc) interval for user simulator to use service;

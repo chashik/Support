@@ -119,8 +119,10 @@ namespace Support.Controllers
             {
                 try
                 {
-                    var c = _context.Database.ExecuteSqlCommand("DELETE FROM [support].[dbo].[message]");
-                    var r = _context.Database.ExecuteSqlCommand("DBCC CHECKIDENT ('[support].[dbo].[message]', RESEED, 0)");
+                    var c = _context.Database
+                        .ExecuteSqlCommand("DELETE FROM [support].[dbo].[message]");
+                    var r = _context.Database
+                        .ExecuteSqlCommand("DBCC CHECKIDENT ('[support].[dbo].[message]', RESEED, 0)");
                     return Ok(c);
                 }
                 catch (Exception ex)

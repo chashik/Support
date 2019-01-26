@@ -48,7 +48,7 @@ namespace Test
                     $"* Minimal time per message for employee, sec (Tmin): {_myConfig.Tmin}",
                     $"* Maximal time per message for employee, sec (Tmax): {_myConfig.Tmax}",
                     $"* Awaiting messages in queue: {mc}",
-                    $"* Lasi Id: {lastId}"
+                    $"* Last Id: {lastId}"
                 });
             }
         }

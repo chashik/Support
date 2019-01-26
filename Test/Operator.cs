@@ -1,16 +1,14 @@
 ﻿using Support;
 using System;
-using System.Collections.Generic;
 using System.Net;
 using System.Threading;
 using System.Threading.Tasks;
 
 namespace Test
 {
-    internal class Operator : ApiClient, ISimulator
+    internal class Operator : ApiClient
     {
         private readonly Random _random;
-        private readonly object _poolLock;
         private readonly string _login;
 
         private Timer _timer;
@@ -21,8 +19,6 @@ namespace Test
         {
             _login = login;
             _random = new Random();
-            _poolLock = new object();
-            Pool = new List<Task>();
         }
 
         public int Offset { get; set; }
@@ -31,9 +27,13 @@ namespace Test
 
         public int Tmax { get; set; }
 
-        public void Start(CancellationToken token)
+        public override void Start(CancellationToken token)
         {
-            token.Register(Stop);
+            token.Register(() =>
+            {
+                if (_timer != null) _timer.Dispose();
+            });
+
             _timer = new Timer(Work, null, _random.Next(Tmin, Tmax), Timeout.Infinite);
         }
 
@@ -68,10 +68,13 @@ namespace Test
                             WriteInline($"{_login}: Unexpected updating result, HttpStatus: {code}");
                     }
                     else
-                        WriteInline($"{_login}: Unexpected aquiring result, HttpStatus: {code}");
+                        WriteInline($"{_login}: Not aquired, HttpStatus: {code}");
                 }
 
-                try { _timer.Change(_random.Next(Tmin, Tmax) * 1000, Timeout.Infinite); }
+                try
+                {
+                    _timer.Change(_random.Next(Tmin, Tmax) * 1000, Timeout.Infinite);
+                }
                 catch (ObjectDisposedException ex)
                 {
                     Console.WriteLine($"\rOperator {_login} iterator disposed! ({ex.Message})");
@@ -81,12 +84,5 @@ namespace Test
             PoolIn(t);
             t.ContinueWith(antecedent => PoolOut(antecedent));
         }
-
-        private void PoolIn(Task t) { lock (_poolLock) Pool.Add(t); }
-        private void PoolOut(Task t) { lock (_poolLock) Pool.Remove(t); }
-
-        public List<Task> Pool { get; }
-
-        private void Stop() { if (_timer != null) _timer.Dispose(); }
     }
 }

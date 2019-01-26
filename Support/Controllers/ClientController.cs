@@ -33,7 +33,7 @@ namespace Support.Controllers
 
 
         // GET: api/Client/login/num - common message selector 
-        // for clients and employees by login, id or time offset
+        // for clients and employees by login, id/time offset
         [HttpGet("{login}/{num:int}")]
         public async Task<IActionResult> GetMessage([FromRoute] string login, [FromRoute] int num)
         {
@@ -119,8 +119,9 @@ namespace Support.Controllers
             {
                 try
                 {
-                    _context.Messages.RemoveRange(_context.Messages);
-                    return NoContent();
+                    var c = _context.Database.ExecuteSqlCommand("DELETE FROM [support].[dbo].[message]");
+                    var r = _context.Database.ExecuteSqlCommand("DBCC CHECKIDENT ('[support].[dbo].[message]', RESEED, 0)");
+                    return Ok(c);
                 }
                 catch (Exception ex)
                 {

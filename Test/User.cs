@@ -9,9 +9,8 @@ using System.Threading.Tasks;
 
 namespace Test
 {
-    public class User : ApiClient, ISimulator
+    public class User : ApiClient
     {
-        private readonly object _poolLock;
         private readonly Random _random;
 
         private ConcurrentBag<Message> _messages;
@@ -22,17 +21,19 @@ namespace Test
         {
             _login = login;
             _random = new Random();
-            _poolLock = new object();
-            Pool = new List<Task>();
         }
 
         public int T { get; set; }
 
         public int Tc { get; set; }
 
-        public void Start(CancellationToken token)
+        public override void Start(CancellationToken token)
         {
-            token.Register(Stop);
+            token.Register(() =>
+            {
+                if (_timer != null) _timer.Dispose();
+            });
+
             _timer = new Timer(Work, null, _random.Next(T, Tc), Timeout.Infinite);
         }
 
@@ -148,15 +149,5 @@ namespace Test
                 }
             }
         }
-
-        private void PoolIn(Task t) { lock (_poolLock) Pool.Add(t); }
-
-        private void PoolOut(Task t) { lock (_poolLock) Pool.Remove(t); }
-
-        public List<Task> Pool { get; }
-
-        private void Stop() { if (_timer != null) _timer.Dispose(); }
-
-        
     }
 }

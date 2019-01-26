@@ -4,13 +4,12 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net;
-using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
 
 namespace Test
 {
-    internal class Simulation : ApiClient
+    internal class Simulation
     {
         private readonly MyConfig _myConfig;
 
@@ -23,7 +22,6 @@ namespace Test
         public Simulation(MyConfig conf)
         {
             _myConfig = conf;
-            ApiHost = conf.ApiHost;
 
             Task.WaitAll(Employees(), Messages());
         }
@@ -32,9 +30,12 @@ namespace Test
         {
             get
             {
+                var mc = _messages.Count();
+                var lastId = mc > 0 ? (int?)_messages.Select(p => p.Id).Max() : null;
+
                 return Task.Run(() => new string[]
                 {
-                    $"* Using ApiHost: {ApiHost}",
+                    $"* Using ApiHost: {_myConfig.ApiHost}",
                     $"* User emulators count: {_myConfig.Users}",
 
                     $"* Operators ({_operators.Count()}): {string.Join(", ", _operators)}",
@@ -46,7 +47,8 @@ namespace Test
                     $"* Minimal message age for directors, sec (Td): {_myConfig.Td}",
                     $"* Minimal time per message for employee, sec (Tmin): {_myConfig.Tmin}",
                     $"* Maximal time per message for employee, sec (Tmax): {_myConfig.Tmax}",
-                    $"* Awaiting messages in queue: {_messages.Count()}"
+                    $"* Awaiting messages in queue: {mc}",
+                    $"* Lasi Id: {lastId}"
                 });
             }
         }
@@ -55,7 +57,8 @@ namespace Test
         {
             await Task.Run(() =>
             {
-                if (Get("api/employees", out HttpStatusCode code, out IEnumerable<Employee> employees))
+                if (ApiClient.Get(_myConfig.ApiHost, "api/employees", 
+                    out HttpStatusCode code, out IEnumerable<Employee> employees))
                 {
                     _operators = employees
                         .Where(p => p.ManagerId != null).Select(p => p.Login);
@@ -66,7 +69,7 @@ namespace Test
                         .Select(p => p.Login);
                 }
                 else
-                    WriteInline($"Loading employees failed: {code}");
+                    Console.WriteLine($"Loading employees failed: {code}");
             });
         }
 
@@ -74,23 +77,21 @@ namespace Test
         {
             await Task.Run(() =>
             {
-                if (Get("api/client", out HttpStatusCode code, out _messages))
-                {
-
-                }
-                else
-                    WriteInline($"Loading unanswered messages failed: {code}");
+                if (!ApiClient.Get(_myConfig.ApiHost, "api/client",
+                    out HttpStatusCode code, out _messages))
+                    Console.WriteLine($"Loading unanswered messages failed: {code}");
             });
         }
 
         public async Task Start()
         {
             Console.WriteLine("To stop simulation, press 's'");
-            WriteInline("Getting things ready, please wait..");
+            Console.Write("\rGetting things ready, please wait..");
 
             var range = new int[_myConfig.Users];
             int i, l;
-            for (i = 0, l = _myConfig.Users; i < l; i++) range[i] = i;
+            for (i = 0, l = _myConfig.Users; i < l; i++)
+                range[i] = i;
 
             using (var source = new CancellationTokenSource())
             {
@@ -99,18 +100,19 @@ namespace Test
                     var token = source.Token;
                     var starts = new ConcurrentBag<Task>();
                     var simulators = new ConcurrentBag<ISimulator>();
+                    var apiHost = _myConfig.ApiHost;
 
                     var t1 = Task.Run(() => range.AsParallel().ForAll(p =>
-                         {
-                             var user = new User("client" + p)
-                             {
-                                 T = _myConfig.T,
-                                 Tc = _myConfig.Tc,
-                                 ApiHost = ApiHost
-                             };
-                             starts.Add(new Task(() => user.Start(token)));
-                             simulators.Add(user);
-                         }));
+                    {
+                        var user = new User("client" + p)
+                        {
+                            T = _myConfig.T,
+                            Tc = _myConfig.Tc,
+                            ApiHost = apiHost
+                        };
+                        starts.Add(new Task(() => user.Start(token)));
+                        simulators.Add(user);
+                    }));
 
                     void createOperator(string login, int offset)
                     {
@@ -119,21 +121,21 @@ namespace Test
                             Offset = offset,
                             Tmin = _myConfig.Tmin,
                             Tmax = _myConfig.Tmax,
-                            ApiHost = ApiHost
+                            ApiHost = apiHost
                         };
                         starts.Add(new Task(() => employee.Start(token)));
                         simulators.Add(employee);
                     }
 
                     var t2 = Task.Run(() =>
-                      {
-                          foreach (var o in _operators)
-                              createOperator(o, 0);
-                          foreach (var m in _managers)
-                              createOperator(m, _myConfig.Tm);
-                          foreach (var d in _directors)
-                              createOperator(d, _myConfig.Td);
-                      });
+                    {
+                        foreach (var o in _operators)
+                            createOperator(o, 0);
+                        foreach (var m in _managers)
+                            createOperator(m, _myConfig.Tm);
+                        foreach (var d in _directors)
+                            createOperator(d, _myConfig.Td);
+                    });
 
                     Task.WaitAll(t1, t2);
 
@@ -144,9 +146,9 @@ namespace Test
                     while (waitingInput)
                     {
                         char ch = Console.ReadKey().KeyChar;
-                        if (ch == 's' || ch == 'S' || ch == 'ы' || ch == 'Ы')
+                        if (ch == 's' || ch == 'S' || ch == 'ы' || ch == 'Ы') // Ы :)
                         {
-                            Console.WriteLine($"\nStop requested... ");
+                            Console.WriteLine($"\nStop requested.. ");
                             source.Cancel();
                             waitingInput = false;
                         }

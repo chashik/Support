@@ -1,6 +1,7 @@
 ﻿using Microsoft.Extensions.Configuration;
 using System;
 using System.IO;
+using System.Net;
 using System.Threading.Tasks;
 
 namespace Test
@@ -22,13 +23,6 @@ namespace Test
 
             Console.WriteLine("\nPress Enter to exit..");
             Console.ReadLine();
-            
-            /*await Task.Run(() =>
-            {
-                var ago = DateTime.Now.AddSeconds(-1000);
-                Console.WriteLine(DateTime.Now > ago); // true
-                Console.ReadLine();
-            });*/
         }
 
         private static IConfigurationRoot Configuration()
@@ -50,8 +44,6 @@ namespace Test
 
         private static async Task Start(string arg, IConfigurationRoot conf)
         {
-            var apiHost = conf.GetValue<string>("ApiHost");
-            var users = conf.GetValue<int>("Users");
             switch (arg)
             {
                 case "sim":
@@ -61,7 +53,7 @@ namespace Test
                     await Inform(conf);
                     break;
                 case "clear":
-                    await Clear(apiHost);
+                    await Clear(conf.GetValue<string>("ApiHost"));
                     break;
                 default:
                     await ArgumentsError();
@@ -79,12 +71,19 @@ namespace Test
         {
             var emu = new Simulation(new MyConfig(conf));
             var info = await emu.About;
-            foreach (var str in info) Console.WriteLine(str);
+            foreach (var str in info)
+                Console.WriteLine(str);
         }
 
         private static async Task Clear(string apiHost)
         {
-            throw new NotImplementedException();
+            await Task.Run(() =>
+            {
+                if (ApiClient.Delete(apiHost, "api/client", out HttpStatusCode code, out int count))
+                    Console.WriteLine("Succesfully deleted {0} items and run reseed", count);
+                else
+                    Console.WriteLine("Unexpected result, HttpStatus: {}", code);
+            });
         }
 
         private static async Task ArgumentsError()
@@ -93,15 +92,16 @@ namespace Test
             {
                 var output = new string[]
                 {
-                "Check arguments!",
-                "Valid options are: sim, info, clear.",
-                "* Sim - start simulation;",
-                "* Info - show parameters, employees and messages queue statistics;",
-                "* Clear - clear server messages queue.",
-                "Try to check params 'info' before simulation 'sim'."
+                    "Check arguments!",
+                    "Valid options are: sim, info, clear.",
+                    "* Sim - start simulation;",
+                    "* Info - show parameters, employees and messages queue statistics;",
+                    "* Clear - clear server messages queue and reset Id;",
+                    "Try to check params 'info' first."
                 };
 
-                foreach (var s in output) Console.WriteLine(s);
+                foreach (var s in output)
+                    Console.WriteLine(s);
             });
         }
     }

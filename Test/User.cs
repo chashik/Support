@@ -17,7 +17,6 @@ namespace Test
         private ConcurrentBag<Message> _messages;
         private string _login;
         private Timer _timer;
-        private bool _workLock;
 
         public User(string login)
         {
@@ -39,12 +38,10 @@ namespace Test
 
         private void Work(object state)
         {
-            if (!_workLock) // repeated cross calls are omitted
+            Update(); // checks status and updates messages list for current login synchronously (almost)
+
+            var t = Task.Run(() =>
             {
-                _workLock = true;
-
-                Update(); // checks status and updates messages list for current login
-
                 if (_messages.Count > 0) // "flips a coin" to choose whether to create new message or cancel an older one
                 {
                     var coin = Convert.ToBoolean(_random.Next(0, 2));
@@ -65,9 +62,10 @@ namespace Test
                 {
                     Console.WriteLine($"\rUser {_login} iterator disposed! ({ex.Message})");
                 }
+            });
 
-                _workLock = false;
-            }
+            PoolIn(t);
+            t.ContinueWith(antecedent => PoolOut(antecedent));
         }
 
         private void Update()
@@ -85,23 +83,34 @@ namespace Test
 
             if (_messages.Count > 0)
             {
-                var updated = new List<Message>();
+                var updated = new ConcurrentBag<Message>();
+                var messages = new List<Message>();
+                var t = new List<Task>();
+
                 while (_messages.TryTake(out Message message))
-                {
-                    if (Get($"api/client/{_login}/{message.Id}", out HttpStatusCode code, out Message fresh))
+                    messages.Add(message);
+
+                foreach(var message in messages)
+                    t.Add(Task.Run(() => 
                     {
-                        if (fresh.Finished != null)
-                            WriteInline($"{_login}: message completed (id: {message.Id})");
-                        else
+                        if (Get($"api/client/{_login}/{message.Id}", out HttpStatusCode code, out Message fresh))
                         {
-                            updated.Add(fresh);
-                            WriteInline($"{_login}: message updated (id: {message.Id})");
+                            if (fresh.Finished != null)
+                                WriteInline($"{_login}: message completed (id: {message.Id})");
+                            else
+                            {
+                                updated.Add(fresh);
+                                WriteInline($"{_login}: message updated (id: {message.Id})");
+                            }
                         }
-                    }
-                    else
-                        WriteInline($"{_login}: unexpected updating result, HttpStatus: {code}");
-                }
+                        else
+                            WriteInline($"{_login}: unexpected updating result, HttpStatus: {code}");
+                    }));
+
+                messages.Clear();
+                Task.WaitAll(t.ToArray());
                 _messages = new ConcurrentBag<Message>(updated.Distinct());
+                updated.Clear();
             }
         }
 
@@ -113,18 +122,13 @@ namespace Test
                 Contents = $"{DateTime.Now.ToString("yyyy.MM.dd hh:mm:ss ")} test message from {_login}"
             };
 
-            var t = Task.Run(() =>
+            if (Post("api/client", message, out HttpStatusCode code, out message))
             {
-                if (Post("api/client", message, out HttpStatusCode code, out message))
-                {
-                    _messages.Add(message);
-                    WriteInline($"{_login} : message created (id: {message.Id})");
-                }
-                else
-                    WriteInline($"{_login}: unexpected creation result, HttpStatus: {code}");
-            });
-            PoolIn(t);
-            t.ContinueWith(antecedent => PoolOut(antecedent));
+                _messages.Add(message);
+                WriteInline($"{_login} : message created (id: {message.Id})");
+            }
+            else
+                WriteInline($"{_login}: unexpected creation result, HttpStatus: {code}");
         }
 
         private void Cancel()
@@ -134,19 +138,14 @@ namespace Test
                 var copy = message.ShallowCopy();
                 copy.Cancelled = true;
 
-                var t = Task.Run(() =>
-                {
-                    if (Put($"api/client/{message.Id}", copy, out HttpStatusCode code))
-                        WriteInline($"{ _login}: message cancelled (id: {message.Id})");
-                    else
-                    {
-                        _messages.Add(message);
-                        WriteInline($"{_login}: unexpected cancellation result, HttpStatus: {code}");
-                    }
-                });
 
-                PoolIn(t);
-                t.ContinueWith(antecedent => PoolOut(antecedent));
+                if (Put($"api/client/{message.Id}", copy, out HttpStatusCode code))
+                    WriteInline($"{ _login}: message cancelled (id: {message.Id})");
+                else
+                {
+                    _messages.Add(message);
+                    WriteInline($"{_login}: unexpected cancellation result, HttpStatus: {code}");
+                }
             }
         }
 

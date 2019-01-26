@@ -2,7 +2,6 @@
 using System;
 using System.Collections.Generic;
 using System.Net;
-using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -15,7 +14,6 @@ namespace Test
         private readonly string _login;
 
         private Timer _timer;
-        private bool _workLock;
         private bool _aquired;
         private Message _message;
 
@@ -41,59 +39,47 @@ namespace Test
 
         private void Work(object state)
         {
-            if (!_workLock) // repeated cross calls are omitted
+            var t = Task.Run(() =>
             {
-                _workLock = true;
-
-                Task work;
-
                 if (_aquired)
                 {
-                    work = Task.Run(() =>
-                     {
-                         _message.Answer = $"test answer from {_login}";
+                    _message.Answer = $"test answer from {_login}";
 
-                         if (Put($"api/client/{_message.Id}", _message, out HttpStatusCode code))
-                         {
-                             _aquired = false;
-                             WriteInline($"{_login}: message answered (id: {_message.Id})");
-                         }
-                         else
-                             WriteInline($"{_login}: unexpected processing result, HttpStatus: {code}");
-                     });
+                    if (Put($"api/client/{_message.Id}", _message, out HttpStatusCode code))
+                    {
+                        _aquired = false;
+                        WriteInline($"{_login}: message answered (id: {_message.Id})");
+                    }
+                    else
+                        WriteInline($"{_login}: unexpected processing result, HttpStatus: {code}");
                 }
                 else
                 {
-                    work = Task.Run(() =>
+                    if (Get($"api/client/{_login}/{Offset}", out HttpStatusCode code, out _message))
                     {
-                        if (Get($"api/client/{_login}/{Offset}", out HttpStatusCode code, out _message))
-                        {
-                            _message.OperatorId = _login;
+                        _message.OperatorId = _login;
 
-                            if (Put($"api/client/{_message.Id}", _message, out code))
-                            {
-                                _aquired = true;
-                                WriteInline($"{_login}: message aquired (id: {_message.Id})");
-                            }
-                            else
-                                WriteInline($"{_login}: Unexpected updating result, HttpStatus: {code}");
+                        if (Put($"api/client/{_message.Id}", _message, out code))
+                        {
+                            _aquired = true;
+                            WriteInline($"{_login}: message aquired (id: {_message.Id})");
                         }
                         else
-                            WriteInline($"{_login}: Unexpected aquiring result, HttpStatus: {code}");
-                    });
+                            WriteInline($"{_login}: Unexpected updating result, HttpStatus: {code}");
+                    }
+                    else
+                        WriteInline($"{_login}: Unexpected aquiring result, HttpStatus: {code}");
                 }
-
-                PoolIn(work);
-                work.ContinueWith(antecedent => PoolOut(antecedent));
 
                 try { _timer.Change(_random.Next(Tmin, Tmax) * 1000, Timeout.Infinite); }
                 catch (ObjectDisposedException ex)
                 {
                     Console.WriteLine($"\rOperator {_login} iterator disposed! ({ex.Message})");
                 }
+            });
 
-                _workLock = false;
-            }
+            PoolIn(t);
+            t.ContinueWith(antecedent => PoolOut(antecedent));
         }
 
         private void PoolIn(Task t) { lock (_poolLock) Pool.Add(t); }

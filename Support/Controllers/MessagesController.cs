@@ -9,22 +9,22 @@ namespace Support.Controllers
     [Route("api/[controller]")]
     [ApiController]
     [Produces("application/json")]
-    public class ClientController : ControllerBase
+    public class MessagesController : ControllerBase
     {
         private readonly SupportContext _context;
 
-        public ClientController(SupportContext context) =>
+        public MessagesController(SupportContext context) =>
             _context = context;
 
 
-        // GET: api/Client - all unanswered messages
+        // GET: api/Messages - all unanswered messages
         [HttpGet]
         public async Task<IActionResult> GetMessages() =>
             await Task.Run<IActionResult>(() => Ok(_context.Messages
                 .Where(p => p.Finished == null).Select(p => p.ShallowCopy()).ToArray()));
 
 
-        // GET: api/Client/login - unanswered messages for client's login
+        // GET: api/Messages/login - unanswered messages for client's login
         [HttpGet("{login}")]
         public async Task<IActionResult> GetMessages([FromRoute] string login) =>
             await Task.Run<IActionResult>(() => Ok(_context.Messages
@@ -32,7 +32,7 @@ namespace Support.Controllers
                 .Select(p => p.ShallowCopy()).ToArray()));
 
 
-        // GET: api/Client/login/num - common message selector 
+        // GET: api/Messages/login/num - common message selector 
         // for clients and employees by login, id/time offset
         [HttpGet("{login}/{num:int}")]
         public async Task<IActionResult> GetMessage([FromRoute] string login, [FromRoute] int num)
@@ -67,7 +67,7 @@ namespace Support.Controllers
                 return Ok(message);
         }
 
-        // PUT: api/Client/5
+        // PUT: api/Messages/5
         [HttpPut("{id}")]
         public async Task<IActionResult> PutMessage([FromRoute] int id, [FromBody] Message message)
         {
@@ -97,7 +97,7 @@ namespace Support.Controllers
             return NoContent();
         }
 
-        // POST: api/Client
+        // POST: api/Messages
         [HttpPost]
         public async Task<IActionResult> PostMessage([FromBody] Message message)
         {
@@ -112,7 +112,7 @@ namespace Support.Controllers
                 new { login = message.Client, num = message.Id }, message);
         }
 
-        // DELETE: api/Client/5
+        // DELETE: api/Messages
         [HttpDelete]
         public async Task<IActionResult> DeleteMessages() =>
             await Task.Run<IActionResult>(() =>
@@ -131,7 +131,7 @@ namespace Support.Controllers
                 }
             });
 
-        // DELETE: api/Client/5
+        // DELETE: api/Messages/5
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteMessage([FromRoute] int id)
         {

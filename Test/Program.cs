@@ -79,7 +79,7 @@ namespace Test
         {
             await Task.Run(() =>
             {
-                if (ApiClient.Delete(apiHost, "api/client", out HttpStatusCode code, out int count))
+                if (ApiClient.Delete(apiHost, "api/messages", out HttpStatusCode code, out int count))
                     Console.WriteLine("Succesfully deleted {0} items and run reseed", count);
                 else
                     Console.WriteLine("Unexpected result, HttpStatus: {}", code);

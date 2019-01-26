@@ -45,7 +45,7 @@ namespace Test
                 {
                     _message.Answer = $"test answer from {_login}";
 
-                    if (Put($"api/client/{_message.Id}", _message, out HttpStatusCode code))
+                    if (Put($"api/messages/{_message.Id}", _message, out HttpStatusCode code))
                     {
                         _aquired = false;
                         WriteInline($"{_login}: message answered (id: {_message.Id})");
@@ -55,11 +55,11 @@ namespace Test
                 }
                 else
                 {
-                    if (Get($"api/client/{_login}/{Offset}", out HttpStatusCode code, out _message))
+                    if (Get($"api/messages/{_login}/{Offset}", out HttpStatusCode code, out _message))
                     {
                         _message.OperatorId = _login;
 
-                        if (Put($"api/client/{_message.Id}", _message, out code))
+                        if (Put($"api/messages/{_message.Id}", _message, out code))
                         {
                             _aquired = true;
                             WriteInline($"{_login}: message aquired (id: {_message.Id})");

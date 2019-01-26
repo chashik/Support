@@ -73,7 +73,7 @@ namespace Test
         {
             if (_messages == null) // requests initial messages collection for current login
             {
-                if (Get($"api/client/{_login}", out HttpStatusCode code, out IEnumerable<Message> messages))
+                if (Get($"api/messages/{_login}", out HttpStatusCode code, out IEnumerable<Message> messages))
                 {
                     _messages = new ConcurrentBag<Message>(messages);
                     WriteInline($"{_login}: {_messages.Count} unanswered messages loaded");
@@ -94,7 +94,7 @@ namespace Test
                 foreach(var message in messages)
                     t.Add(Task.Run(() => 
                     {
-                        if (Get($"api/client/{_login}/{message.Id}", out HttpStatusCode code, out Message fresh))
+                        if (Get($"api/messages/{_login}/{message.Id}", out HttpStatusCode code, out Message fresh))
                         {
                             if (fresh.Finished != null)
                                 WriteInline($"{_login}: message completed (id: {message.Id})");
@@ -123,7 +123,7 @@ namespace Test
                 Contents = $"{DateTime.Now.ToString("yyyy.MM.dd hh:mm:ss ")} test message from {_login}"
             };
 
-            if (Post("api/client", message, out HttpStatusCode code, out message))
+            if (Post("api/messages", message, out HttpStatusCode code, out message))
             {
                 _messages.Add(message);
                 WriteInline($"{_login} : message created (id: {message.Id})");
@@ -140,7 +140,7 @@ namespace Test
                 copy.Cancelled = true;
 
 
-                if (Put($"api/client/{message.Id}", copy, out HttpStatusCode code))
+                if (Put($"api/messages/{message.Id}", copy, out HttpStatusCode code))
                     WriteInline($"{ _login}: message cancelled (id: {message.Id})");
                 else
                 {

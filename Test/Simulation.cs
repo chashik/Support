@@ -77,7 +77,7 @@ namespace Test
         {
             await Task.Run(() =>
             {
-                if (!ApiClient.Get(_myConfig.ApiHost, "api/client",
+                if (!ApiClient.Get(_myConfig.ApiHost, "api/messages",
                     out HttpStatusCode code, out _messages))
                     Console.WriteLine($"Loading unanswered messages failed: {code}");
             });

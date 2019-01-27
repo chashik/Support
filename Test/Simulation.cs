@@ -36,7 +36,7 @@ namespace Test
                 return Task.Run(() => new string[]
                 {
                     $"* Using ApiHost: {_myConfig.ApiHost}",
-                    $"* User emulators count: {_myConfig.Users}",
+                    $"* User simulators count: {_myConfig.Users}",
 
                     $"* Operators ({_operators.Count()}): {string.Join(", ", _operators)}",
                     $"* Managers ({_managers.Count()}): {string.Join(", ", _managers)}",

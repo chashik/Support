@@ -146,8 +146,14 @@ namespace Test
 
                     Task.WaitAll(t1, t2);
 
-                    Console.WriteLine("To stop simulation, press 's'");
                     starts.AsParallel().ForAll(p => p.Start());
+
+                    foreach (var s in simulators) // pause for all simulators to become stoppable
+                        while (!s.Started) Thread.Sleep(1000);
+
+                    Console.Write("\r                                                                 ");
+                    Console.WriteLine("\rYou can now safely stop simulation by pressing 's' key..");
+                    Console.Write("\rproceding..");
 
                     var waitingInput = true;
 
@@ -176,10 +182,10 @@ namespace Test
                         Console.WriteLine("Other exception: {0}", ex.Message);
                     }
 
-                    Console.WriteLine("\rFinishing tasks, wait..");
+                    Console.WriteLine("\rFinishing tasks, please wait..");
 
-                    foreach (var u in simulators) // waiting while child tasks are not finished
-                        while (u.Pool.Count > 0) Thread.Sleep(1000);
+                    foreach (var s in simulators) // waiting while child tasks are not finished
+                        while (s.Pool.Count > 0) Thread.Sleep(1000);
                 });
             }
         }

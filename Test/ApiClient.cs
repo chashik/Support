@@ -22,23 +22,34 @@ namespace Test
 
         protected bool Get<T>(string requestUri, out HttpStatusCode code, out T data)
         {
-            var t = _httpClient.GetAsync(requestUri);
-            t.Wait();
-            using (var response = t.Result)
+            try
             {
-                code = response.StatusCode;
-                if (code == HttpStatusCode.OK)
+                var t = _httpClient.GetAsync(requestUri);
+                t.Wait();
+
+                using (var response = t.Result)
                 {
-                    var t1 = response.Content.ReadAsAsync<T>();
-                    t1.Wait();
-                    data = t1.Result;
-                    return true;
+                    code = response.StatusCode;
+                    if (code == HttpStatusCode.OK)
+                    {
+                        var t1 = response.Content.ReadAsAsync<T>();
+                        t1.Wait();
+                        data = t1.Result;
+                        return true;
+                    }
+                    else
+                    {
+                        data = default;
+                        return false;
+                    }
                 }
-                else
-                {
-                    data = default;
-                    return false;
-                }
+            }
+            catch (ObjectDisposedException ex)
+            {
+                data = default;
+                code = default;
+                Console.WriteLine($"{Login}: disposed HttpClient");
+                return false;
             }
         }
 
@@ -86,34 +97,55 @@ namespace Test
 
         protected bool Post<T>(string requestUri, T value, out HttpStatusCode code, out T data)
         {
-            var t = _httpClient.PostAsync(requestUri, value, new JsonMediaTypeFormatter());
-            t.Wait();
-            using (var response = t.Result)
+            try
             {
-                code = response.StatusCode;
-                if (code == HttpStatusCode.Created)
+                var t = _httpClient.PostAsync(requestUri, value, new JsonMediaTypeFormatter());
+                t.Wait();
+                using (var response = t.Result)
                 {
-                    var t1 = response.Content.ReadAsAsync<T>();
-                    t1.Wait();
-                    data = t1.Result;
-                    return true;
+                    code = response.StatusCode;
+                    if (code == HttpStatusCode.Created)
+                    {
+                        var t1 = response.Content.ReadAsAsync<T>();
+                        t1.Wait();
+                        data = t1.Result;
+                        return true;
+                    }
+                    else
+                    {
+                        data = default;
+                        return false;
+                    }
                 }
-                else
-                {
-                    data = default;
-                    return false;
-                }
+            }
+            catch (ObjectDisposedException ex)
+            {
+                data = default;
+                code = default;
+                Console.WriteLine($"{Login}: disposed HttpClient");
+                return false;
             }
         }
 
+
         protected bool Put<T>(string requestUri, T value, out HttpStatusCode code)
         {
-            var t = _httpClient.PutAsync(requestUri, value, new JsonMediaTypeFormatter());
-            t.Wait();
-            using (var response = t.Result)
+            try
             {
-                code = response.StatusCode;
-                return code == HttpStatusCode.NoContent;
+                var t = _httpClient.PutAsync(requestUri, value, new JsonMediaTypeFormatter());
+                t.Wait();
+                using (var response = t.Result)
+                {
+                    code = response.StatusCode;
+                    return code == HttpStatusCode.NoContent;
+                }
+            }
+            catch (ObjectDisposedException ex)
+            {
+
+                code = default;
+                Console.WriteLine($"{Login}: disposed HttpClient");
+                return false;
             }
         }
 
@@ -157,6 +189,8 @@ namespace Test
         public List<Task> Pool { get; }
 
         public string Login { get; set; } = "ApiClient";
+
+        public abstract bool Started { get; }
 
         protected void Dispose() => _httpClient.Dispose();
     }

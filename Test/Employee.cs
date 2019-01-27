@@ -80,5 +80,7 @@ namespace Test
             PoolIn(t);
             t.ContinueWith(antecedent => PoolOut(antecedent));
         }
+
+        public override bool Started { get => true; }
     }
 }

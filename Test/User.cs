@@ -15,6 +15,7 @@ namespace Test
 
         private ConcurrentBag<Message> _messages;
         private Timer _timer;
+        private bool _started;
 
         public User(string apiHost) : base(apiHost) => _random = new Random();
 
@@ -73,6 +74,7 @@ namespace Test
                 {
                     _messages = new ConcurrentBag<Message>(messages);
                     WriteInline($"{Login}: {_messages.Count} unanswered messages loaded");
+                    _started = true;
                 }
                 else
                     WriteInline($"{Login}: unexpected result, HttpStatus: {code} (initial collection)");
@@ -145,5 +147,7 @@ namespace Test
                 }
             }
         }
+
+        public override bool Started { get => _started; }
     }
 }

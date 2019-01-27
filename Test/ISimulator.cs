@@ -9,5 +9,7 @@ namespace Test
         void Start(CancellationToken token);
 
         List<Task> Pool { get; }
+
+        bool Started { get; }
     }
 }

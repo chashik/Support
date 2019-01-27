@@ -41,7 +41,7 @@ namespace Support.Controllers
 
             if (await _context.Employees.AnyAsync(p => p.Login == login)) // num as time offset for employee
             {
-                var messages = _context.Messages // unfinished messages for current employee if exist
+                var messages = _context.Messages // unfinished messages for current employee first
                     .Where(p => p.OperatorId == login && p.Finished == null)
                     .ToArray();
 

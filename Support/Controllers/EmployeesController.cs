@@ -7,6 +7,7 @@ namespace Support.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
+    [Produces("application/json")]
     public class EmployeesController : ControllerBase
     {
         private readonly SupportContext _context;

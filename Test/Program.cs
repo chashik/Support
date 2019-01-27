@@ -94,10 +94,10 @@ namespace Test
                 {
                     "Check arguments!",
                     "Valid options are: sim, info, clear.",
-                    "* Sim - start simulation;",
                     "* Info - show parameters, employees and messages queue statistics;",
+                    "* Sim - start simulation;",
                     "* Clear - clear server messages queue and reset Id;",
-                    "Try to check params 'info' first."
+                    "Try to check params ('info') first."
                 };
 
                 foreach (var s in output)

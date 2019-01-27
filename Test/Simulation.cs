@@ -60,7 +60,7 @@ namespace Test
             await Task.Run(() =>
             {
                 if (ApiClient.Get(_myConfig.ApiHost, "api/employees",
-                    out HttpStatusCode code, out IEnumerable<Employee> employees))
+                    out HttpStatusCode code, out IEnumerable<Support.Employee> employees))
                 {
                     _operators = employees
                         .Where(p => p.ManagerId != null).Select(p => p.Login);
@@ -122,9 +122,9 @@ namespace Test
                         simulators.Add(user);
                     }));
 
-                    void createOperator(string login, int offset)
+                    void createEmployee(string login, int offset)
                     {
-                        var employee = new Operator(login)
+                        var employee = new Employee(login)
                         {
                             Offset = offset,
                             Tmin = _myConfig.Tmin,
@@ -138,11 +138,11 @@ namespace Test
                     var t2 = Task.Run(() =>
                     {
                         foreach (var o in _operators)
-                            createOperator(o, 0);
+                            createEmployee(o, 0);
                         foreach (var m in _managers)
-                            createOperator(m, _myConfig.Tm);
+                            createEmployee(m, _myConfig.Tm);
                         foreach (var d in _directors)
-                            createOperator(d, _myConfig.Td);
+                            createEmployee(d, _myConfig.Td);
                     });
 
                     Task.WaitAll(t1, t2);

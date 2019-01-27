@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace Test
 {
-    internal class Operator : ApiClient
+    internal class Employee : ApiClient
     {
         private readonly Random _random;
         private readonly string _login;
@@ -15,7 +15,7 @@ namespace Test
         private bool _aquired;
         private Message _message;
 
-        public Operator(string login)
+        public Employee(string login)
         {
             _login = login;
             _random = new Random();

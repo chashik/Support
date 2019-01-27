@@ -93,7 +93,6 @@ namespace Test
 
         public async Task Start()
         {
-            Console.WriteLine("To stop simulation, press 's'");
             Console.Write("\rGetting things ready, please wait..");
 
             var range = new int[_myConfig.Users];
@@ -147,6 +146,7 @@ namespace Test
 
                     Task.WaitAll(t1, t2);
 
+                    Console.WriteLine("To stop simulation, press 's'");
                     starts.AsParallel().ForAll(p => p.Start());
 
                     var waitingInput = true;

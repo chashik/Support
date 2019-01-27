@@ -27,23 +27,40 @@ namespace Test
         {
             using (var httpClient = new HttpClient { BaseAddress = new Uri(apiHost) })
             {
-                var t = httpClient.GetAsync(requestUri);
-                t.Wait();
-                using (var response = t.Result)
+                try
                 {
-                    code = response.StatusCode;
-                    if (code == HttpStatusCode.OK)
+                    var t = httpClient.GetAsync(requestUri);
+                    t.Wait();
+                    using (var response = t.Result)
                     {
-                        var t1 = response.Content.ReadAsAsync<T>();
-                        t1.Wait();
-                        data = t1.Result;
-                        return true;
+                        code = response.StatusCode;
+                        if (code == HttpStatusCode.OK)
+                        {
+                            var t1 = response.Content.ReadAsAsync<T>();
+                            t1.Wait();
+                            data = t1.Result;
+                            return true;
+                        }
+                        else
+                        {
+                            data = default;
+                            return false;
+                        }
                     }
-                    else
+                }
+                catch (AggregateException ex)
+                {
+                    Console.WriteLine($"Check connection to host '{apiHost}'");
+
+                    foreach (var v in ex.InnerExceptions)
                     {
-                        data = default;
-                        return false;
+                        Console.WriteLine(v.Message);
+                        Console.WriteLine(v.GetType());
                     }
+
+                    data = default;
+                    code = default;
+                    return false;
                 }
             }
         }

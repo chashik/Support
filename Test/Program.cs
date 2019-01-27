@@ -64,15 +64,19 @@ namespace Test
         private static async Task Simulate(IConfigurationRoot conf)
         {
             var emu = new Simulation(new MyConfig(conf));
-            await emu.Start();
+            if (!emu.Failure)
+                await emu.Start();
         }
 
         private static async Task Inform(IConfigurationRoot conf)
         {
             var emu = new Simulation(new MyConfig(conf));
-            var info = await emu.About;
-            foreach (var str in info)
-                Console.WriteLine(str);
+            if (!emu.Failure)
+            {
+                var info = await emu.About;
+                foreach (var str in info)
+                    Console.WriteLine(str);
+            }
         }
 
         private static async Task Clear(string apiHost)

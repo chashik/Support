@@ -53,11 +53,13 @@ namespace Test
             }
         }
 
+        public bool Failure { get; private set; }
+
         private async Task Employees()
         {
             await Task.Run(() =>
             {
-                if (ApiClient.Get(_myConfig.ApiHost, "api/employees", 
+                if (ApiClient.Get(_myConfig.ApiHost, "api/employees",
                     out HttpStatusCode code, out IEnumerable<Employee> employees))
                 {
                     _operators = employees
@@ -69,7 +71,10 @@ namespace Test
                         .Select(p => p.Login);
                 }
                 else
+                {
                     Console.WriteLine($"Loading employees failed: {code}");
+                    Failure = true;
+                }
             });
         }
 
@@ -79,7 +84,10 @@ namespace Test
             {
                 if (!ApiClient.Get(_myConfig.ApiHost, "api/messages",
                     out HttpStatusCode code, out _messages))
+                {
                     Console.WriteLine($"Loading unanswered messages failed: {code}");
+                    Failure = true;
+                }
             });
         }
 

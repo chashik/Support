@@ -41,7 +41,7 @@ namespace Test
         {
             var t = Task.Run(() =>
             {
-                if (_aquired)
+                if (_aquired) // answer message, put it to server and wait for timer
                 {
                     _message.Answer = $"test answer from {_login}";
 
@@ -53,7 +53,7 @@ namespace Test
                     else
                         WriteInline($"{_login}: unexpected processing result, HttpStatus: {code}");
                 }
-                else
+                else // aquire message from server and wait for timer
                 {
                     if (Get($"api/messages/{_login}/{Offset}", out HttpStatusCode code, out _message))
                     {

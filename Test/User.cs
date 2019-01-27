@@ -14,14 +14,9 @@ namespace Test
         private readonly Random _random;
 
         private ConcurrentBag<Message> _messages;
-        private string _login;
         private Timer _timer;
 
-        public User(string login)
-        {
-            _login = login;
-            _random = new Random();
-        }
+        public User(string apiHost) : base(apiHost) => _random = new Random();
 
         public int T { get; set; }
 
@@ -32,6 +27,7 @@ namespace Test
             token.Register(() =>
             {
                 if (_timer != null) _timer.Dispose();
+                Dispose();
             });
 
             _timer = new Timer(Work, null, _random.Next(T, Tc), Timeout.Infinite);
@@ -61,7 +57,7 @@ namespace Test
                 }
                 catch (ObjectDisposedException ex)
                 {
-                    Console.WriteLine($"\rUser {_login} iterator disposed! ({ex.Message})");
+                    Console.WriteLine($"\rUser {Login} iterator disposed! ({ex.Message})");
                 }
             });
 
@@ -73,13 +69,13 @@ namespace Test
         {
             if (_messages == null) // requests initial messages collection for current login
             {
-                if (Get($"api/messages/{_login}", out HttpStatusCode code, out IEnumerable<Message> messages))
+                if (Get($"api/messages/{Login}", out HttpStatusCode code, out IEnumerable<Message> messages))
                 {
                     _messages = new ConcurrentBag<Message>(messages);
-                    WriteInline($"{_login}: {_messages.Count} unanswered messages loaded");
+                    WriteInline($"{Login}: {_messages.Count} unanswered messages loaded");
                 }
                 else
-                    WriteInline($"{_login}: unexpected result, HttpStatus: {code} (initial collection)");
+                    WriteInline($"{Login}: unexpected result, HttpStatus: {code} (initial collection)");
             }
 
             if (_messages.Count > 0)
@@ -94,18 +90,18 @@ namespace Test
                 foreach(var message in messages)
                     t.Add(Task.Run(() => 
                     {
-                        if (Get($"api/messages/{_login}/{message.Id}", out HttpStatusCode code, out Message fresh))
+                        if (Get($"api/messages/{Login}/{message.Id}", out HttpStatusCode code, out Message fresh))
                         {
                             if (fresh.Finished != null)
-                                WriteInline($"{_login}: message completed (id: {message.Id})");
+                                WriteInline($"{Login}: message completed (id: {message.Id})");
                             else
                             {
                                 updated.Add(fresh);
-                                WriteInline($"{_login}: message updated (id: {message.Id})");
+                                WriteInline($"{Login}: message updated (id: {message.Id})");
                             }
                         }
                         else
-                            WriteInline($"{_login}: unexpected updating result, HttpStatus: {code}");
+                            WriteInline($"{Login}: unexpected updating result, HttpStatus: {code}");
                     }));
 
                 messages.Clear();
@@ -119,17 +115,17 @@ namespace Test
         {
             var message = new Message
             {
-                Client = _login,
-                Contents = $"{DateTime.Now.ToString("yyyy.MM.dd hh:mm:ss ")} test message from {_login}"
+                Client = Login,
+                Contents = $"{DateTime.Now.ToString("yyyy.MM.dd hh:mm:ss ")} test message from {Login}"
             };
 
             if (Post("api/messages", message, out HttpStatusCode code, out message))
             {
                 _messages.Add(message);
-                WriteInline($"{_login} : message created (id: {message.Id})");
+                WriteInline($"{Login} : message created (id: {message.Id})");
             }
             else
-                WriteInline($"{_login}: unexpected creation result, HttpStatus: {code}");
+                WriteInline($"{Login}: unexpected creation result, HttpStatus: {code}");
         }
 
         private void Cancel()
@@ -141,11 +137,11 @@ namespace Test
 
 
                 if (Put($"api/messages/{message.Id}", copy, out HttpStatusCode code))
-                    WriteInline($"{ _login}: message cancelled (id: {message.Id})");
+                    WriteInline($"{ Login}: message cancelled (id: {message.Id})");
                 else
                 {
                     _messages.Add(message);
-                    WriteInline($"{_login}: unexpected cancellation result, HttpStatus: {code}");
+                    WriteInline($"{Login}: unexpected cancellation result, HttpStatus: {code}");
                 }
             }
         }

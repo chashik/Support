@@ -112,11 +112,11 @@ namespace Test
 
                     var t1 = Task.Run(() => range.AsParallel().ForAll(p =>
                     {
-                        var user = new User("client" + p)
+                        var user = new User(apiHost)
                         {
                             T = _myConfig.T,
                             Tc = _myConfig.Tc,
-                            ApiHost = apiHost
+                            Login = "client" + p
                         };
                         starts.Add(new Task(() => user.Start(token)));
                         simulators.Add(user);
@@ -124,12 +124,12 @@ namespace Test
 
                     void createEmployee(string login, int offset)
                     {
-                        var employee = new Employee(login)
+                        var employee = new Employee(apiHost)
                         {
                             Offset = offset,
                             Tmin = _myConfig.Tmin,
                             Tmax = _myConfig.Tmax,
-                            ApiHost = apiHost
+                            Login = login
                         };
                         starts.Add(new Task(() => employee.Start(token)));
                         simulators.Add(employee);

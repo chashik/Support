@@ -9,17 +9,12 @@ namespace Test
     internal class Employee : ApiClient
     {
         private readonly Random _random;
-        private readonly string _login;
 
         private Timer _timer;
         private bool _aquired;
         private Message _message;
 
-        public Employee(string login)
-        {
-            _login = login;
-            _random = new Random();
-        }
+        public Employee(string apiHost) : base(apiHost) => _random = new Random();
 
         public int Offset { get; set; }
 
@@ -32,6 +27,7 @@ namespace Test
             token.Register(() =>
             {
                 if (_timer != null) _timer.Dispose();
+                Dispose();
             });
 
             _timer = new Timer(Work, null, _random.Next(Tmin, Tmax), Timeout.Infinite);
@@ -43,32 +39,32 @@ namespace Test
             {
                 if (_aquired) // answer message, put it to server and wait for timer
                 {
-                    _message.Answer = $"test answer from {_login}";
+                    _message.Answer = $"test answer from {Login}";
 
                     if (Put($"api/messages/{_message.Id}", _message, out HttpStatusCode code))
                     {
                         _aquired = false;
-                        WriteInline($"{_login}: message answered (id: {_message.Id})");
+                        WriteInline($"{Login}: message answered (id: {_message.Id})");
                     }
                     else
-                        WriteInline($"{_login}: unexpected processing result, HttpStatus: {code}");
+                        WriteInline($"{Login}: unexpected processing result, HttpStatus: {code}");
                 }
                 else // aquire message from server and wait for timer
                 {
-                    if (Get($"api/messages/{_login}/{Offset}", out HttpStatusCode code, out _message))
+                    if (Get($"api/messages/{Login}/{Offset}", out HttpStatusCode code, out _message))
                     {
-                        _message.OperatorId = _login;
+                        _message.OperatorId = Login;
 
                         if (Put($"api/messages/{_message.Id}", _message, out code))
                         {
                             _aquired = true;
-                            WriteInline($"{_login}: message aquired (id: {_message.Id})");
+                            WriteInline($"{Login}: message aquired (id: {_message.Id})");
                         }
                         else
-                            WriteInline($"{_login}: Unexpected updating result, HttpStatus: {code}");
+                            WriteInline($"{Login}: Unexpected updating result, HttpStatus: {code}");
                     }
                     else
-                        WriteInline($"{_login}: Not aquired, HttpStatus: {code}");
+                        WriteInline($"{Login}: Not aquired, HttpStatus: {code}");
                 }
 
                 try
@@ -77,7 +73,7 @@ namespace Test
                 }
                 catch (ObjectDisposedException ex)
                 {
-                    Console.WriteLine($"\rOperator {_login} iterator disposed! ({ex.Message})");
+                    Console.WriteLine($"\rOperator {Login} iterator disposed! ({ex.Message})");
                 }
             });
 

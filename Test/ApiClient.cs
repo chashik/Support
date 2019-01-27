@@ -11,17 +11,36 @@ namespace Test
     public abstract class ApiClient : ISimulator
     {
         private readonly object _poolLock;
+        private readonly HttpClient _httpClient;
 
-        public ApiClient()
+        public ApiClient(string apiHost)
         {
             _poolLock = new object();
             Pool = new List<Task>();
+            _httpClient = new HttpClient() { BaseAddress = new Uri(apiHost) };
         }
 
-        public string ApiHost { get; set; }
-
-        protected bool Get<T>(string requestUri, out HttpStatusCode code, out T data) =>
-            Get(ApiHost, requestUri, out code, out data);
+        protected bool Get<T>(string requestUri, out HttpStatusCode code, out T data)
+        {
+            var t = _httpClient.GetAsync(requestUri);
+            t.Wait();
+            using (var response = t.Result)
+            {
+                code = response.StatusCode;
+                if (code == HttpStatusCode.OK)
+                {
+                    var t1 = response.Content.ReadAsAsync<T>();
+                    t1.Wait();
+                    data = t1.Result;
+                    return true;
+                }
+                else
+                {
+                    data = default;
+                    return false;
+                }
+            }
+        }
 
         public static bool Get<T>(string apiHost, string requestUri, out HttpStatusCode code, out T data)
         {
@@ -67,40 +86,34 @@ namespace Test
 
         protected bool Post<T>(string requestUri, T value, out HttpStatusCode code, out T data)
         {
-            using (var httpClient = new HttpClient { BaseAddress = new Uri(ApiHost) })
+            var t = _httpClient.PostAsync(requestUri, value, new JsonMediaTypeFormatter());
+            t.Wait();
+            using (var response = t.Result)
             {
-                var t = httpClient.PostAsync(requestUri, value, new JsonMediaTypeFormatter());
-                t.Wait();
-                using (var response = t.Result)
+                code = response.StatusCode;
+                if (code == HttpStatusCode.Created)
                 {
-                    code = response.StatusCode;
-                    if (code == HttpStatusCode.Created)
-                    {
-                        var t1 = response.Content.ReadAsAsync<T>();
-                        t1.Wait();
-                        data = t1.Result;
-                        return true;
-                    }
-                    else
-                    {
-                        data = default;
-                        return false;
-                    }
+                    var t1 = response.Content.ReadAsAsync<T>();
+                    t1.Wait();
+                    data = t1.Result;
+                    return true;
+                }
+                else
+                {
+                    data = default;
+                    return false;
                 }
             }
         }
 
         protected bool Put<T>(string requestUri, T value, out HttpStatusCode code)
         {
-            using (var httpClient = new HttpClient { BaseAddress = new Uri(ApiHost) })
+            var t = _httpClient.PutAsync(requestUri, value, new JsonMediaTypeFormatter());
+            t.Wait();
+            using (var response = t.Result)
             {
-                var t = httpClient.PutAsync(requestUri, value, new JsonMediaTypeFormatter());
-                t.Wait();
-                using (var response = t.Result)
-                {
-                    code = response.StatusCode;
-                    return code == HttpStatusCode.NoContent;
-                }
+                code = response.StatusCode;
+                return code == HttpStatusCode.NoContent;
             }
         }
 
@@ -142,5 +155,9 @@ namespace Test
         public abstract void Start(CancellationToken token);
 
         public List<Task> Pool { get; }
+
+        public string Login { get; set; } = "ApiClient";
+
+        protected void Dispose() => _httpClient.Dispose();
     }
 }

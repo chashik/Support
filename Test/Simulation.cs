@@ -93,7 +93,7 @@ namespace Test
 
         public async Task Start()
         {
-            Console.Write("\rGetting things ready, please wait..");
+            Console.WriteLine("Getting things ready, please wait..");
 
             var range = new int[_myConfig.Users];
             int i, l;
@@ -146,14 +146,9 @@ namespace Test
 
                     Task.WaitAll(t1, t2);
 
+                    Console.WriteLine("To stop simulation press 's'..");
+
                     starts.AsParallel().ForAll(p => p.Start());
-
-                    foreach (var s in simulators) // pause for all simulators to become stoppable
-                        while (!s.Started) Thread.Sleep(1000);
-
-                    Console.Write("\r                                                                 ");
-                    Console.WriteLine("\rYou can now safely stop simulation by pressing 's' key..");
-                    Console.Write("\rproceding..");
 
                     var waitingInput = true;
 
@@ -162,7 +157,7 @@ namespace Test
                         char ch = Console.ReadKey().KeyChar;
                         if (ch == 's' || ch == 'S' || ch == 'ы' || ch == 'Ы') // Ы :)
                         {
-                            Console.WriteLine($"\nStop requested.. ");
+                            Console.WriteLine($"\nStop requested, finishing tasks, please wait.. ");
                             source.Cancel();
                             waitingInput = false;
                         }
@@ -181,11 +176,6 @@ namespace Test
                     {
                         Console.WriteLine("Other exception: {0}", ex.Message);
                     }
-
-                    Console.WriteLine("\rFinishing tasks, please wait..");
-
-                    foreach (var s in simulators) // waiting while child tasks are not finished
-                        while (s.Pool.Count > 0) Thread.Sleep(1000);
                 });
             }
         }

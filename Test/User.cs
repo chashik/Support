@@ -15,7 +15,6 @@ namespace Test
 
         private ConcurrentBag<Message> _messages;
         private Timer _timer;
-        private bool _started;
 
         public User(string apiHost) : base(apiHost) => _random = new Random();
 
@@ -25,45 +24,51 @@ namespace Test
 
         public override void Start(CancellationToken token)
         {
-            token.Register(() =>
-            {
-                if (_timer != null) _timer.Dispose();
-                Dispose();
-            });
+            base.Start(token);
 
             _timer = new Timer(Work, null, _random.Next(T, Tc), Timeout.Infinite);
         }
 
-        private void Work(object state)
+        protected override void Work(object state)
         {
-            Update(); // checks status and updates messages list for current login synchronously (almost)
-
-            var t = Task.Run(() =>
+            if (_stopped)
             {
-                if (_messages.Count > 0) // "flips a coin" to choose whether to create new message or cancel an older one
+                if (_timer != null) _timer.Dispose();
+                while (_pool.Count > 0)
+                    Thread.Sleep(1000);
+                Dispose();
+            }
+            else
+            {
+                var t = Task.Run(() =>
                 {
-                    var coin = Convert.ToBoolean(_random.Next(0, 2));
+                    Update(); // updates all previous messages first
 
-                    if (coin)
+                    if (_messages.Count > 0) // "flips a coin" to choose whether to create new message or cancel an older one
+                    {
+                        var coin = Convert.ToBoolean(_random.Next(0, 2));
+
+                        if (coin)
+                            New();
+                        else
+                            Cancel();
+                    }
+                    else // creates new message
                         New();
-                    else
-                        Cancel();
-                }
-                else // creates new message
-                    New();
 
-                try
-                {
-                    _timer.Change(_random.Next(T, Tc) * 1000, Timeout.Infinite);
-                }
-                catch (ObjectDisposedException ex)
-                {
-                    Console.WriteLine($"\rUser {Login} iterator disposed! ({ex.Message})");
-                }
-            });
+                    try
+                    {
+                        _timer.Change(_random.Next(T, Tc) * 1000, Timeout.Infinite);
+                    }
+                    catch (ObjectDisposedException ex)
+                    {
+                        Console.WriteLine($"\rUser {Login} iterator disposed! ({ex.Message})");
+                    }
+                });
 
-            PoolIn(t);
-            t.ContinueWith(antecedent => PoolOut(antecedent));
+                PoolIn(t);
+                t.ContinueWith(antecedent => PoolOut(antecedent));
+            }
         }
 
         private void Update()
@@ -74,7 +79,6 @@ namespace Test
                 {
                     _messages = new ConcurrentBag<Message>(messages);
                     WriteInline($"{Login}: {_messages.Count} unanswered messages loaded");
-                    _started = true;
                 }
                 else
                     WriteInline($"{Login}: unexpected result, HttpStatus: {code} (initial collection)");
@@ -147,7 +151,5 @@ namespace Test
                 }
             }
         }
-
-        public override bool Started { get => _started; }
     }
 }

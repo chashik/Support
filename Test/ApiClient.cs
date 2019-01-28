@@ -12,11 +12,14 @@ namespace Test
     {
         private readonly object _poolLock;
         private readonly HttpClient _httpClient;
+        protected readonly List<Task> _pool;
+
+        protected bool _stopped;
 
         public ApiClient(string apiHost)
         {
             _poolLock = new object();
-            Pool = new List<Task>();
+            _pool = new List<Task>();
             _httpClient = new HttpClient() { BaseAddress = new Uri(apiHost) };
         }
 
@@ -180,17 +183,22 @@ namespace Test
             Console.Write("\r{0}", str);
         }
 
-        protected void PoolIn(Task t) { lock (_poolLock) Pool.Add(t); }
+        protected void PoolIn(Task t) { lock (_poolLock) _pool.Add(t); }
 
-        protected void PoolOut(Task t) { lock (_poolLock) Pool.Remove(t); }
+        protected void PoolOut(Task t) { lock (_poolLock) _pool.Remove(t); }
 
-        public abstract void Start(CancellationToken token);
+        public virtual void Start(CancellationToken token)
+        {
+            token.Register(() =>
+            {
+                _stopped = true;
+                Work(null);
+            });
+        }
 
-        public List<Task> Pool { get; }
+        protected abstract void Work(object state);
 
         public string Login { get; set; } = "ApiClient";
-
-        public abstract bool Started { get; }
 
         protected void Dispose() => _httpClient.Dispose();
     }

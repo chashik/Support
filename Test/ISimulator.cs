@@ -1,15 +1,9 @@
-﻿using System.Collections.Generic;
-using System.Threading;
-using System.Threading.Tasks;
+﻿using System.Threading;
 
 namespace Test
 {
     public interface ISimulator
     {
         void Start(CancellationToken token);
-
-        List<Task> Pool { get; }
-
-        bool Started { get; }
     }
 }

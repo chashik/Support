@@ -1,12 +1,6 @@
 ### Technical support web-api example
 #### .Net Core 2.1, ASP MVC, REST
-#### Features:
-- Create message;
-- Update message;
-- Delete all messages;
-- List messages;
-- List employees;
-####
+###
 #### Highlights: 
 - REST, task-based pattern;
 - message queue as database table;

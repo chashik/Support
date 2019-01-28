@@ -10,7 +10,6 @@ namespace Test
 {
     public abstract class ApiClient : ISimulator
     {
-        private readonly object _poolLock;
         private readonly HttpClient _httpClient;
         protected readonly List<Task> _pool;
         protected readonly Random _random;
@@ -20,7 +19,6 @@ namespace Test
 
         public ApiClient(string apiHost)
         {
-            _poolLock = new object();
             _pool = new List<Task>();
             _httpClient = new HttpClient() { BaseAddress = new Uri(apiHost) };
             _random = new Random();

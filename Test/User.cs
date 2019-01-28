@@ -4,71 +4,31 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net;
-using System.Threading;
 using System.Threading.Tasks;
 
 namespace Test
 {
     public class User : ApiClient
     {
-        private readonly Random _random;
-
         private ConcurrentBag<Message> _messages;
-        private Timer _timer;
 
-        public User(string apiHost) : base(apiHost) => _random = new Random();
+        public User(string apiHost) : base(apiHost) { }
 
-        public int T { get; set; }
-
-        public int Tc { get; set; }
-
-        public override void Start(CancellationToken token)
+        protected override void Work()
         {
-            base.Start(token);
+            Update(); // updates all previous messages first
 
-            _timer = new Timer(Work, null, _random.Next(T, Tc), Timeout.Infinite);
-        }
-
-        protected override void Work(object state)
-        {
-            if (_stopped)
+            if (_messages.Count > 0) // "flips a coin" to choose whether to create new message or cancel an older one
             {
-                if (_timer != null) _timer.Dispose();
-                while (_pool.Count > 0)
-                    Thread.Sleep(1000);
-                Dispose();
+                var coin = Convert.ToBoolean(_random.Next(0, 2));
+
+                if (coin)
+                    New();
+                else
+                    Cancel();
             }
-            else
-            {
-                var t = Task.Run(() =>
-                {
-                    Update(); // updates all previous messages first
-
-                    if (_messages.Count > 0) // "flips a coin" to choose whether to create new message or cancel an older one
-                    {
-                        var coin = Convert.ToBoolean(_random.Next(0, 2));
-
-                        if (coin)
-                            New();
-                        else
-                            Cancel();
-                    }
-                    else // creates new message
-                        New();
-
-                    try
-                    {
-                        _timer.Change(_random.Next(T, Tc) * 1000, Timeout.Infinite);
-                    }
-                    catch (ObjectDisposedException ex)
-                    {
-                        Console.WriteLine($"\rUser {Login} iterator disposed! ({ex.Message})");
-                    }
-                });
-
-                PoolIn(t);
-                t.ContinueWith(antecedent => PoolOut(antecedent));
-            }
+            else // creates new message
+                New();
         }
 
         private void Update()

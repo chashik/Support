@@ -13,16 +13,81 @@ namespace Test
         private readonly object _poolLock;
         private readonly HttpClient _httpClient;
         protected readonly List<Task> _pool;
+        protected readonly Random _random;
 
-        protected bool _stopped;
+        private bool _stopped;
+        private Timer _timer;
 
         public ApiClient(string apiHost)
         {
             _poolLock = new object();
             _pool = new List<Task>();
             _httpClient = new HttpClient() { BaseAddress = new Uri(apiHost) };
+            _random = new Random();
         }
 
+        public string Login { get; set; } = "ApiClient";
+
+        public int Tmin { get; set; }
+
+        public int Tmax { get; set; }
+
+        protected void WriteInline(string str)
+        {
+            Console.Write("\r                                                                 ");
+            Console.Write("\r{0}", str);
+        }
+
+        // PUBLIC BEHAVIOR (Single responsibility)
+        #region
+        public virtual void Start(CancellationToken token)
+        {
+            token.Register(() =>
+            {
+                _stopped = true;
+                Do(null);
+            });
+
+            _timer = new Timer(Do, null, _random.Next(Tmin, Tmax), Timeout.Infinite);
+        }
+
+        private void Do(object stopped)
+        {
+            if (_stopped)
+            {
+                if (_timer != null) // cancel iteration
+                    _timer.Dispose();
+
+                while (_pool.Count > 0) // waiting for HttpClient to finish requests
+                    Thread.Sleep(1000);
+
+                _httpClient.Dispose();
+            }
+            else // do work and plan next
+            {
+                var t = new Task(Work);
+                _pool.Add(t);
+                t.ContinueWith(antecedent =>
+                {
+                    _pool.Remove(antecedent);
+                    try
+                    {
+                        _timer.Change(_random.Next(Tmin, Tmax) * 1000, Timeout.Infinite);
+                    }
+                    catch (ObjectDisposedException ex)
+                    {
+                        Console.WriteLine($"\rUser {Login} iterator disposed! ({ex.Message})");
+                    }
+                });
+                t.Start();
+            }
+        }
+
+        protected abstract void Work();
+        #endregion
+
+        // HTTP METHODS
+        #region
         protected bool Get<T>(string requestUri, out HttpStatusCode code, out T data)
         {
             var t = _httpClient.GetAsync(requestUri);
@@ -146,30 +211,6 @@ namespace Test
                 }
             }
         }
-
-        protected void WriteInline(string str)
-        {
-            Console.Write("\r                                                                 ");
-            Console.Write("\r{0}", str);
-        }
-
-        protected void PoolIn(Task t) { lock (_poolLock) _pool.Add(t); }
-
-        protected void PoolOut(Task t) { lock (_poolLock) _pool.Remove(t); }
-
-        public virtual void Start(CancellationToken token)
-        {
-            token.Register(() =>
-            {
-                _stopped = true;
-                Work(null);
-            });
-        }
-
-        protected abstract void Work(object state);
-
-        public string Login { get; set; } = "ApiClient";
-
-        protected void Dispose() => _httpClient.Dispose();
+        #endregion
     }
 }

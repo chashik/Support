@@ -113,8 +113,8 @@ namespace Test
                     {
                         var user = new User(apiHost)
                         {
-                            T = _myConfig.T,
-                            Tc = _myConfig.Tc,
+                            Tmin = _myConfig.T,
+                            Tmax = _myConfig.Tc,
                             Login = "client" + p
                         };
                         starts.Add(new Task(() => user.Start(token)));
@@ -157,7 +157,7 @@ namespace Test
                         char ch = Console.ReadKey().KeyChar;
                         if (ch == 's' || ch == 'S' || ch == 'ы' || ch == 'Ы') // Ы :)
                         {
-                            Console.WriteLine($"\nStop requested, finishing tasks, please wait.. ");
+                            Console.WriteLine($"\nFinishing tasks, please wait.. ");
                             source.Cancel();
                             waitingInput = false;
                         }

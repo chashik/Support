@@ -49,7 +49,7 @@ namespace Test
             _timer = new Timer(Do, null, _random.Next(Tmin, Tmax), Timeout.Infinite);
         }
 
-        private void Do(object stopped)
+        private void Do(object state)
         {
             if (_stopped)
             {

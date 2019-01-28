@@ -26,7 +26,7 @@ namespace Test
                 else
                     WriteInline($"{Login}: unexpected processing result, HttpStatus: {code}");
             }
-            else // aquire message from server and wait  until next time
+            else // aquire message from server, assign employee and wait until next time
             {
                 if (Get($"api/messages/{Login}/{Offset}", out HttpStatusCode code, out _message))
                 {

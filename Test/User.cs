@@ -16,18 +16,18 @@ namespace Test
 
         protected override void Work()
         {
-            Update(); // updates all previous messages first
+            Update(); // update all previous messages first
 
-            if (_messages.Count > 0) // "flips a coin" to choose whether to create new message or cancel an older one
+            if (_messages.Count > 0) // "flip a coin" to choose whether to create or cancel a message
             {
                 var coin = Convert.ToBoolean(_random.Next(0, 2));
 
                 if (coin)
-                    New();
+                    New(); // create new
                 else
-                    Cancel();
+                    Cancel(); // cancel message
             }
-            else // creates new message
+            else // create new message
                 New();
         }
 

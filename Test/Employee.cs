@@ -14,7 +14,7 @@ namespace Test
 
         protected override void Work()
         {
-            if (_aquired) // answer message, put it to server and wait for timer
+            if (_aquired) // answer message, put it to server and wait until next time
             {
                 _message.Answer = $"test answer from {Login}";
 
@@ -26,7 +26,7 @@ namespace Test
                 else
                     WriteInline($"{Login}: unexpected processing result, HttpStatus: {code}");
             }
-            else // aquire message from server and wait for timer
+            else // aquire message from server and wait  until next time
             {
                 if (Get($"api/messages/{Login}/{Offset}", out HttpStatusCode code, out _message))
                 {

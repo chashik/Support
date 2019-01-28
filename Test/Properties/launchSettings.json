@@ -2,7 +2,7 @@
   "profiles": {
     "Test": {
       "commandName": "Project",
-      "commandLineArgs": "sim info sim clear"
+      "commandLineArgs": "info sim clear"
     }
   }
 }

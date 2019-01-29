@@ -88,10 +88,7 @@ namespace Test
         #region
         protected bool Get<T>(string requestUri, out HttpStatusCode code, out T data)
         {
-            var t = _httpClient.GetAsync(requestUri);
-            t.Wait();
-
-            using (var response = t.Result)
+            using (var response = _httpClient.GetAsync(requestUri).Result)
             {
                 code = response.StatusCode;
                 if (code == HttpStatusCode.OK)
@@ -115,9 +112,7 @@ namespace Test
             {
                 try
                 {
-                    var t = httpClient.GetAsync(requestUri);
-                    t.Wait();
-                    using (var response = t.Result)
+                    using (var response = httpClient.GetAsync(requestUri).Result)
                     {
                         code = response.StatusCode;
                         if (code == HttpStatusCode.OK)
@@ -153,9 +148,7 @@ namespace Test
 
         protected bool Post<T>(string requestUri, T value, out HttpStatusCode code, out T data)
         {
-            var t = _httpClient.PostAsync(requestUri, value, new JsonMediaTypeFormatter());
-            t.Wait();
-            using (var response = t.Result)
+            using (var response = _httpClient.PostAsync(requestUri, value, new JsonMediaTypeFormatter()).Result)
             {
                 code = response.StatusCode;
                 if (code == HttpStatusCode.Created)
@@ -173,12 +166,9 @@ namespace Test
             }
         }
 
-
         protected bool Put<T>(string requestUri, T value, out HttpStatusCode code)
         {
-            var t = _httpClient.PutAsync(requestUri, value, new JsonMediaTypeFormatter());
-            t.Wait();
-            using (var response = t.Result)
+            using (var response = _httpClient.PutAsync(requestUri, value, new JsonMediaTypeFormatter()).Result)
             {
                 code = response.StatusCode;
                 return code == HttpStatusCode.NoContent;
@@ -189,9 +179,7 @@ namespace Test
         {
             using (var httpClient = new HttpClient { BaseAddress = new Uri(apiHost) })
             {
-                var t = httpClient.DeleteAsync(requestUri);
-                t.Wait();
-                using (var response = t.Result)
+                using (var response = httpClient.DeleteAsync(requestUri).Result)
                 {
                     code = response.StatusCode;
                     if (code == HttpStatusCode.OK)

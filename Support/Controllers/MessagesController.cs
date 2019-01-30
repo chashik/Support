@@ -34,11 +34,17 @@ namespace Support.Controllers
 
 
         // GET: api/Messages/login/num - common message selector 
-        // for clients and employees by login, id/time offset
+        /// <summary>
+        /// Complex method for both emloyees and clients. The only problem is another check wether login belongs to
+        /// employee, but no additional controller is required
+        /// </summary>
+        /// <param name="login">login</param>
+        /// <param name="num">time offset for employee, id for client</param>
+        /// <returns></returns>
         [HttpGet("{login}/{num:int}")]
         public async Task<IActionResult> GetMessage([FromRoute] string login, [FromRoute] int num)
         {
-            Message message = null;
+            Message message = null; // using null assignment while object? still unavailable
 
             if (await _context.Employees.AnyAsync(p => p.Login == login)) // num as time offset if employee
             {
@@ -62,7 +68,7 @@ namespace Support.Controllers
             else // num as id if client
             {
                 var m = await _context.Messages.FindAsync(num);
-                if (m.Client == login) // additional client check
+                if (m.Client == login) // additional ownership check
                     message = m;
             }
 

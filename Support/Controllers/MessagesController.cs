@@ -34,8 +34,8 @@ namespace Support.Controllers
 
 
         /// <summary>
-        /// GET: Complex method for both emloyees and clients. The only problem is another check wether login belongs to
-        /// employee, but no additional controller is required.
+        /// GET: Complex method for both emloyees and clients. Contains another check wether login belongs to
+        /// employee so no additional controller is required.
         /// </summary>
         /// <param name="login">login</param>
         /// <param name="num">time offset for employee, id for client</param>

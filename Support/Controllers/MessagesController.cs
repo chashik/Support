@@ -21,7 +21,8 @@ namespace Support.Controllers
         [HttpGet]
         public async Task<IActionResult> GetMessages() =>
             await Task.Run<IActionResult>(() => Ok(_context.Messages
-                .Where(p => p.Finished == null).Select(p => p.ShallowCopy()).ToArray()));
+                .Where(p => p.Finished == null)
+                .Select(p => p.ShallowCopy())));
 
 
         // GET: api/Messages/login - unanswered messages for client's login
@@ -29,7 +30,7 @@ namespace Support.Controllers
         public async Task<IActionResult> GetMessages([FromRoute] string login) =>
             await Task.Run<IActionResult>(() => Ok(_context.Messages
                 .Where(p => p.Finished == null && p.Client == login)
-                .Select(p => p.ShallowCopy()).ToArray()));
+                .Select(p => p.ShallowCopy())));
 
 
         // GET: api/Messages/login/num - common message selector 
@@ -37,9 +38,9 @@ namespace Support.Controllers
         [HttpGet("{login}/{num:int}")]
         public async Task<IActionResult> GetMessage([FromRoute] string login, [FromRoute] int num)
         {
-            Message message = null; 
+            Message message = null;
 
-            if (await _context.Employees.AnyAsync(p => p.Login == login)) // num as time offset for employee
+            if (await _context.Employees.AnyAsync(p => p.Login == login)) // num as time offset if employee
             {
                 var messages = _context.Messages // unfinished messages for current employee first
                     .Where(p => p.OperatorId == login && p.Finished == null)
@@ -58,8 +59,12 @@ namespace Support.Controllers
                         message = messages.OrderBy(p => p.Id).First();
                 }
             }
-            else // num as id for client
-                message = await _context.Messages.FindAsync(num);
+            else // num as id if client
+            {
+                var m = await _context.Messages.FindAsync(num);
+                if (m.Client == login) // additional client check
+                    message = m;
+            }
 
             if (message == null)
                 return NotFound();
@@ -121,7 +126,7 @@ namespace Support.Controllers
                 {
                     var c = _context.Database
                         .ExecuteSqlCommand("DELETE FROM [support].[dbo].[message]");
-                    var r = _context.Database
+                    var r = _context.Database // using TSQL instead of recreating the table as there is no alternative in EF for reseed
                         .ExecuteSqlCommand("DBCC CHECKIDENT ('[support].[dbo].[message]', RESEED, 0)");
                     return Ok(c);
                 }

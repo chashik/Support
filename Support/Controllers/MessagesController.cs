@@ -131,7 +131,7 @@ namespace Support.Controllers
                 {
                     var c = _context.Database
                         .ExecuteSqlCommand("DELETE FROM [support].[dbo].[message]");
-                    var r = _context.Database // using TSQL instead of recreating the table as there is no alternative in EF for reseed
+                    var r = _context.Database // using T-SQL instead of recreating the table as there is no alternative in EF for reseed
                         .ExecuteSqlCommand("DBCC CHECKIDENT ('[support].[dbo].[message]', RESEED, 0)");
                     return Ok(c);
                 }

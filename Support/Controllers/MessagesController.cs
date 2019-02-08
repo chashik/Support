@@ -32,49 +32,16 @@ namespace Support.Controllers
                 .Where(p => p.Finished == null && p.Client == login)
                 .Select(p => p.ShallowCopy())));
 
-
-        /// <summary>
-        /// GET: Complex method for both emloyees and clients. Contains another check wether login belongs to
-        /// employee so no additional controller is required.
-        /// </summary>
-        /// <param name="login">login</param>
-        /// <param name="num">time offset for employee, id for client</param>
-        /// <returns></returns>
+        // GET: api/Messages/login/4 - message for client or employee
         [HttpGet("{login}/{num:int}")]
         public async Task<IActionResult> GetMessage([FromRoute] string login, [FromRoute] int num)
         {
-            Message message = null; // using null assignment while object? still unavailable
-
-            if (await _context.Employees.AnyAsync(p => p.Login == login)) // num as time offset if employee
-            {
-                var messages = _context.Messages // unfinished messages for current employee first
-                    .Where(p => p.OperatorId == login && p.Finished == null)
-                    .ToArray();
-
-                if (messages.Length > 0)
-                    message = messages.OrderBy(p => p.Id).First();
-                else
-                {
-                    var created = DateTime.Now.AddSeconds(-num);
-                    messages = _context.Messages // messages suitable with time offset
-                        .Where(p => p.OperatorId == null && p.Finished == null && p.Created < created)
-                        .ToArray();
-
-                    if (messages.Length > 0)
-                        message = messages.OrderBy(p => p.Id).First();
-                }
-            }
-            else // num as id if client
-            {
-                var m = await _context.Messages.FindAsync(num);
-                if (m.Client == login) // additional ownership check
-                    message = m;
-            }
+            var message = await _context.MessageAsync(login, num);
 
             if (message == null)
                 return NotFound();
             else
-                return Ok(message);
+                return Ok(message.ShallowCopy());
         }
 
         // PUT: api/Messages/5
@@ -127,19 +94,12 @@ namespace Support.Controllers
         public async Task<IActionResult> DeleteMessages() =>
             await Task.Run<IActionResult>(() =>
             {
-                try
-                {
-                    var c = _context.Database
-                        .ExecuteSqlCommand("DELETE FROM [support].[dbo].[message]");
-                    var r = _context.Database // using T-SQL instead of recreating the table as there is no alternative in EF for reseed
-                        .ExecuteSqlCommand("DBCC CHECKIDENT ('[support].[dbo].[message]', RESEED, 0)");
-                    return Ok(c);
-                }
-                catch (Exception ex)
-                {
-                    return NotFound(ex.Message);
-                }
+                 if (_context.DeleteMessages(out int rowscount))
+                     return Ok(rowscount);
+                 else
+                     return NotFound();
             });
+
 
         // DELETE: api/Messages/5
         [HttpDelete("{id}")]
@@ -158,7 +118,7 @@ namespace Support.Controllers
             return Ok(message);
         }
 
-        private bool MessageExists(int id) => 
+        private bool MessageExists(int id) =>
             _context.Messages.Any(e => e.Id == id);
     }
 }

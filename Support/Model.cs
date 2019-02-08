@@ -4,6 +4,8 @@ using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 using System.Diagnostics.CodeAnalysis;
+using System.Linq;
+using System.Threading.Tasks;
 
 namespace Support
 {
@@ -37,6 +39,67 @@ namespace Support
 
         public virtual DbSet<Employee> Employees { get; set; }
         public virtual DbSet<Message> Messages { get; set; }
+    }
+
+    // DBContext extensions as business logic
+    public static class SupportExtentions
+    {
+        /// <summary>
+        /// Complex async method for both emloyees and clients. Contains another check wether login belongs to
+        /// employee.
+        /// </summary>
+        /// <param name="login">login</param>
+        /// <param name="num">time offset for employee, id for client</param>
+        /// <returns></returns>
+        public static async Task<Message> MessageAsync(this SupportContext context, string login, int num)
+        {
+            Message message = null; // using null assignment while object? still unavailable
+
+            if (await context.Employees.AnyAsync(p => p.Login == login)) // num as time offset if employee
+            {
+                var messages = context.Messages // unfinished messages for current employee first
+                    .Where(p => p.OperatorId == login && p.Finished == null)
+                    .ToArray();
+
+                if (messages.Length > 0)
+                    message = messages.OrderBy(p => p.Id).First();
+                else
+                {
+                    var created = DateTime.Now.AddSeconds(-num);
+                    messages = context.Messages // messages suitable with time offset
+                        .Where(p => p.OperatorId == null && p.Finished == null && p.Created < created)
+                        .ToArray();
+
+                    if (messages.Length > 0)
+                        message = messages.OrderBy(p => p.Id).First();
+                }
+            }
+            else // num as id if client
+            {
+                var m = await context.Messages.FindAsync(num);
+                if (m.Client == login) // additional ownership check
+                    message = m;
+            }
+
+            return message;
+        }
+
+        public static bool DeleteMessages(this SupportContext context, out int rowscount)
+        {
+            try
+            {
+                rowscount = context.Database
+                    .ExecuteSqlCommand("DELETE FROM [support].[dbo].[message]");
+                var r = context.Database // using T-SQL instead of recreating the table as there is no alternative in EF for reseed
+                    .ExecuteSqlCommand("DBCC CHECKIDENT ('[support].[dbo].[message]', RESEED, 0)");
+                return true;
+            }
+            catch (Exception ex)
+            {
+                rowscount = 0;
+                return false;
+            }
+        }
     }
 
     [Table("employee")]

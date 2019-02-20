@@ -1,5 +1,5 @@
 ### Technical support web-api example
-#### ASP Net Core 2.2, ASP MVC, REST
+#### ASP Net Core 2.2, REST
 ###
 #### Highlights: 
 - REST, task-based pattern;

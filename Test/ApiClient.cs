@@ -17,7 +17,7 @@ namespace Test
         private bool _stopped;
         private Timer _timer;
 
-        public ApiClient(string apiHost)
+        protected ApiClient(string apiHost)
         {
             _pool = new List<Task>();
             _httpClient = new HttpClient() { BaseAddress = new Uri(apiHost) };
